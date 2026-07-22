@@ -1,15 +1,10 @@
 GitHub Pages:
-1. Alle Dateien gemeinsam in dasselbe Hauptverzeichnis des Repositories hochladen.
-2. Die vorhandene index.html ersetzen.
-3. Die beiden PDF-Dateien nicht umbenennen.
-4. PWA-Installation funktioniert nur über HTTPS; GitHub Pages erfüllt das.
-5. Nach dem Hochladen Strg+F5 drücken oder den Website-Cache löschen.
+1. ZIP entpacken.
+2. Alle Dateien gemeinsam in das Hauptverzeichnis des Repositories hochladen.
+3. Vorhandene Dateien ersetzen.
+4. Auch alle Dateien namens menu-perruche-*.jpg und menu-elio-*.jpg hochladen.
+5. Nach dem Commit Strg+F5 drücken.
+6. Bei einer installierten PWA die App vollständig schließen und erneut öffnen.
 
-Benötigte Dateien:
-- index.html
-- manifest.webmanifest
-- sw.js
-- icon-192.png
-- icon-512.png
-- carte-food-perruche-summer.pdf
-- Elio.pdf
+Die Speisekarten werden nun als echte einzelne Seiten dargestellt.
+Es gibt innerhalb des Popups keinen mehrseitigen PDF-Scroller mehr.
