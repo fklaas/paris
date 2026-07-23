@@ -415,7 +415,7 @@
         <div class="gallery-day-head">
           <div><span class="gallery-day-kicker">${meta.icon} ${escapeHtml(meta.short)}</span><h3>${escapeHtml(meta.title)}</h3><div class="gallery-day-count">${list.length} Foto${list.length === 1 ? '' : 's'} · ${favorites} Favorit${favorites === 1 ? '' : 'en'}</div></div>
         </div>
-        ${group === 'other' ? '' : dayPolaroid(list, group)}
+        ${dayPolaroid(list, group)}
         <div class="gallery-journal">
           <div class="gallery-journal-heading"><span>✍️</span><div><strong>Tagesnotiz</strong><small>Ein kleiner Satz reicht, um den Tag später wieder lebendig zu machen.</small></div></div>
           <textarea class="gallery-note" id="note-${group}" placeholder="Heute haben wir …">${escapeHtml(state.notes[group] || '')}</textarea>
