@@ -1,4 +1,4 @@
-const CACHE = 'paris-reise-v-day-closure-sync-3-ambient-icon';
+const CACHE = 'paris-reise-v-day-closure-sync-4-steps-layout';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
   './ambient.css','./ambient.js','./gallery.css','./reisebuch.css','./reisebuch.js',
