@@ -149,7 +149,18 @@
     return new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
   }
 
-  function uniqueId(file) {
+  const pendingPhotoIds = new Set();
+
+  async function uniqueId(file) {
+    // iOS kann beim Kamera-Dialog dasselbe Bild in seltenen Fällen zweimal an den
+    // Change-Handler liefern. Eine inhaltsbasierte UUID macht beide Vorgänge
+    // idempotent: exakt dieselbe Datei besitzt immer exakt dieselbe Foto-ID.
+    if (crypto.subtle) {
+      const buffer = await file.arrayBuffer();
+      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', buffer));
+      const hex = [...digest].map(value => value.toString(16).padStart(2, '0')).join('');
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+    }
     return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}-4${Math.random().toString(16).slice(2,5)}-8${Math.random().toString(16).slice(2,5)}-${Math.random().toString(16).slice(2,14)}`;
   }
 
@@ -251,29 +262,39 @@
     let added = 0;
     try {
       for (const file of images) {
-        const duplicate = state.photos.some(photo => photo.originalName === file.name && photo.size === file.size && photo.lastModified === file.lastModified);
+        const id = await uniqueId(file);
+        const duplicate = pendingPhotoIds.has(id) || state.photos.some(photo => photo.id === id);
         if (duplicate) continue;
-        const date = await takenDate(file);
-        const key = dateKey(date);
-        const group = tripGroup(key);
-        const item = {
-          id: uniqueId(file),
-          blob: file,
-          originalName: file.name,
-          size: file.size,
-          lastModified: file.lastModified,
-          takenAt: date.toISOString(),
-          dateKey: key,
-          group,
-          favorite: false,
-          polaroid: false,
-          caption: '',
-          createdAt: new Date().toISOString()
-        };
-        await put(item);
-        state.photos.push(item);
-        if (window.ParisSync?.gallery) await window.ParisSync.gallery.upload(item);
-        added++;
+
+        pendingPhotoIds.add(id);
+        try {
+          const date = await takenDate(file);
+          const key = dateKey(date);
+          const group = tripGroup(key);
+          const item = {
+            id,
+            blob: file,
+            originalName: file.name,
+            size: file.size,
+            lastModified: file.lastModified,
+            takenAt: date.toISOString(),
+            dateKey: key,
+            group,
+            favorite: false,
+            polaroid: false,
+            caption: '',
+            createdAt: new Date().toISOString()
+          };
+
+          // Erst in der gemeinsamen Cloud speichern. Danach lokal per ID upserten.
+          // Trifft währenddessen bereits das eigene Realtime-Ereignis ein, ersetzt
+          // das Upsert denselben Datensatz, statt eine zweite Karte anzulegen.
+          if (window.ParisSync?.gallery) await window.ParisSync.gallery.upload(item);
+          await upsertLocalPhoto(item);
+          added++;
+        } finally {
+          pendingPhotoIds.delete(id);
+        }
       }
       await normalizePolaroids();
       render();
