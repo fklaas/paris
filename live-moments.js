@@ -74,6 +74,7 @@
     document.addEventListener('click',e=>{if(!els.toolsPanel.hidden&&!e.target.closest('.live-moment-tools'))closeTools()});
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTools()});
     setMode(testMode?'test':'auto',false);
+    document.addEventListener('paris:cloud-updated',e=>{if(e.detail?.key===MEMORY_KEY)render()});
     render();
     setInterval(()=>{if(!testMode)render()},60000)
   }

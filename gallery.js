@@ -146,7 +146,7 @@
   }
 
   function uniqueId(file) {
-    return `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`;
+    return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}-4${Math.random().toString(16).slice(2,5)}-8${Math.random().toString(16).slice(2,5)}-${Math.random().toString(16).slice(2,14)}`;
   }
 
   function arrayBufferSlice(file, start, length) {
@@ -268,6 +268,7 @@
         };
         await put(item);
         state.photos.push(item);
+        if (window.ParisCloud) await window.ParisCloud.uploadPhoto(item);
         added++;
       }
       await normalizePolaroids();
@@ -290,6 +291,7 @@
       for (const photo of selected.slice(1)) {
         photo.polaroid = false;
         await put(photo);
+        if (window.ParisCloud) window.ParisCloud.updatePhoto(photo.id, { polaroid: false }).catch(error => console.warn('Cloud-Polaroid:', error.message));
       }
     }
   }
@@ -299,6 +301,7 @@
     if (!photo) return;
     Object.assign(photo, patch);
     await put(photo);
+    if (window.ParisCloud) window.ParisCloud.updatePhoto(id, patch).catch(error => console.warn('Cloud-Foto:', error.message));
     if (rerender) render();
   }
 
@@ -319,6 +322,7 @@
       if (photo.polaroid !== value) {
         photo.polaroid = value;
         await put(photo);
+        if (window.ParisCloud) window.ParisCloud.updatePhoto(photo.id, { polaroid: value }).catch(error => console.warn('Cloud-Polaroid:', error.message));
       }
     }
     render();
@@ -327,7 +331,9 @@
 
   async function removePhoto(id) {
     if (!confirm('Dieses Foto aus der Reisegalerie entfernen?')) return;
+    const photo = state.photos.find(item => item.id === id);
     await del(id);
+    if (window.ParisCloud && photo) await window.ParisCloud.deletePhoto(photo);
     cleanupUrl(id);
     state.photos = state.photos.filter(photo => photo.id !== id);
     render();
@@ -338,6 +344,7 @@
     if (!state.photos.length && !Object.values(state.notes).some(value => String(value).trim())) return;
     if (!confirm('Alle lokal gespeicherten Galeriefotos und Tagesnotizen entfernen?')) return;
     await clearAll();
+    if (window.ParisCloud) await window.ParisCloud.clearPhotos();
     state.urls.forEach(url => URL.revokeObjectURL(url));
     state.urls.clear();
     state.photos = [];
@@ -527,6 +534,30 @@
         photo.polaroid = Boolean(photo.polaroid);
         photo.caption = photo.caption || '';
       });
+      if (window.ParisCloud) {
+        await window.ParisCloud.ready;
+        const remotePhotos = await window.ParisCloud.fetchPhotos();
+        const remoteIds = new Set(remotePhotos.map(photo => photo.id));
+        for (const localPhoto of state.photos.filter(photo => !remoteIds.has(photo.id))) {
+          if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(localPhoto.id)) {
+            await window.ParisCloud.uploadPhoto(localPhoto).catch(error => console.warn('Lokales Foto:', error.message));
+          }
+        }
+        for (const remotePhoto of remotePhotos) await put(remotePhoto);
+        state.photos = await getAll();
+        window.ParisCloud.subscribePhotos(async () => {
+          try {
+            const fresh = await window.ParisCloud.fetchPhotos();
+            await clearAll();
+            for (const photo of fresh) await put(photo);
+            state.urls.forEach(url => URL.revokeObjectURL(url));
+            state.urls.clear();
+            state.photos = fresh;
+            render();
+            toast('Galerie wurde synchronisiert');
+          } catch (error) { console.warn('Galerie-Synchronisierung:', error.message); }
+        });
+      }
       await normalizePolaroids();
       render();
     } catch (error) {
