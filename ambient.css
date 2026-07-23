@@ -15,14 +15,30 @@
 .ambient-panel.is-open *{pointer-events:auto}
 .ambient-toggle{z-index:10051!important}
 
+/* 2026-07-23 · Floating atmosphere control removed globally */
+.ambient-toggle,
+.ambient-panel {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
 
-/* 2026-07-23 · Floating-Button zuverlässig sichtbar */
-body:not(.revue-page) .ambient-toggle{
-  display:flex!important;visibility:visible!important;opacity:1!important;
-  position:fixed!important;left:14px!important;right:auto!important;bottom:14px!important;
-  z-index:2147483000!important;max-width:calc(100vw - 28px)!important;
+
+/* 2026-07-23 · Kompakter Atmosphäre-Schalter auf allen Geräten */
+.ambient-toggle{
+  width:46px!important;height:46px!important;min-width:46px!important;
+  padding:0!important;gap:0!important;justify-content:center!important;
+  border-radius:50%!important;display:flex!important;visibility:visible!important;
+  opacity:1!important;pointer-events:auto!important;
+  background:rgba(255,255,255,.9)!important;color:#805362!important;
+  box-shadow:0 10px 30px rgba(50,32,40,.2)!important;
 }
-body:not(.revue-page) .ambient-panel{
-  position:fixed!important;left:14px!important;right:auto!important;bottom:70px!important;
-  z-index:2147482999!important;max-width:calc(100vw - 28px)!important;
-}
+.ambient-toggle:hover{transform:translateY(-2px) scale(1.03)}
+.ambient-toggle[aria-pressed="true"]{background:#805362!important;color:#fff!important}
+.ambient-toggle-glyph{font:900 22px/1 Georgia,serif;transform:translateY(-1px)}
+.ambient-toggle .ambient-dot{position:absolute;width:8px;height:8px;right:5px;bottom:5px;border:2px solid rgba(255,255,255,.95);background:#b9a7ae}
+.ambient-toggle[aria-pressed="true"] .ambient-dot{background:#79d7b0}
+.ambient-toggle-text{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.ambient-panel{bottom:76px!important}
+@media(max-width:600px){.ambient-toggle{right:14px!important;bottom:14px!important;width:44px!important;height:44px!important;min-width:44px!important}.ambient-panel{right:12px!important;bottom:70px!important}}

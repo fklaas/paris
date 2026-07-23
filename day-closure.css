@@ -11,29 +11,3 @@
 
 .closure-person-switch{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:999px;background:rgba(255,255,255,.7);border:1px solid rgba(211,184,190,.35)}.closure-person-switch small{padding-left:5px;color:#7b8792}.closure-person-switch button{border:0;border-radius:999px;padding:6px 10px;background:transparent;color:#627586;font-size:11px;font-weight:800;cursor:pointer}.closure-person-switch button.is-active{background:#f4dce3;color:#a74f6a}.closure-save-error{color:#b33f58!important}
 @media(max-width:650px){.day-closure-head-actions{justify-items:start}.closure-person-switch{margin-top:2px}}
-
-
-/* 2026-07-23 · Stabilitäts- und Mobile-Patch */
-html,body{max-width:100%;overflow-x:hidden!important}
-.day-group,.day-closure,.day-closure *{box-sizing:border-box}
-.day-group,.day-closure{max-width:100%;min-width:0}
-.day-closure-stats,.day-closure-journal,.day-closure-extra{width:100%;min-width:0}
-.closure-stat,.closure-editor,.closure-stat>div,.closure-editor>*{min-width:0}
-.closure-stars{min-height:32px;align-items:center;flex-wrap:nowrap}
-.closure-star{display:inline-grid!important;place-items:center;min-width:28px;min-height:32px;font-size:28px!important;touch-action:manipulation}
-.food-rating{min-height:70px;width:100%;align-items:start}
-.food-choice{display:grid!important;min-width:0;touch-action:manipulation}
-.food-choice span{flex:0 0 auto}
-@media(max-width:650px){
-  .day-closure{width:100%;max-width:100%;margin-left:0!important;margin-right:0!important;overflow:hidden}
-  .day-closure-head-actions,.closure-person-switch{max-width:100%}
-  .closure-stat{width:100%;padding:15px 14px}
-  .rating-stat{align-items:center}
-  .rating-stat>div:last-child{flex:1;min-width:0}
-  .closure-stars{gap:1px;margin:5px 0 2px}
-  .closure-star{min-width:31px;font-size:30px!important}
-  .food-editor{min-height:auto!important;padding-bottom:16px}
-  .food-rating{grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;margin:10px 0 4px}
-  .food-choice{font-size:9px;line-height:1.15;overflow-wrap:normal;word-break:normal}
-  .food-choice span{width:38px;height:38px;max-width:100%;font-size:19px}
-}
