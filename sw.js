@@ -1,9 +1,10 @@
-const CACHE="paris-reise-v-live-moments-structure-fix-3";
+const CACHE="paris-reise-v-supabase-visible-status-1";
 const ASSETS=["./","./index.html","./ambient.css","./ambient.js","./dynamic-background.css?v=20260723-6","./dynamic-background.js?v=20260723-6","./revue.html","./revue.css","./revue.js","./audio/ambient-home.ogg","./audio/ambient-home.mp3","./audio/ambient-road.ogg","./audio/ambient-road.mp3","./audio/ambient-hotel.ogg","./audio/ambient-hotel.mp3","./audio/ambient-paris.ogg","./audio/ambient-paris.mp3","./audio/ambient-seine.ogg","./audio/ambient-seine.mp3","./audio/ambient-cafe.ogg","./audio/ambient-cafe.mp3","./audio/ambient-disney.ogg","./audio/ambient-disney.mp3","./audio/ambient-night.ogg","./audio/ambient-night.mp3","./reisebuch.css","./reisebuch.js","./assistant.js","./gallery.css","./gallery.js","./manifest.webmanifest","./icon-192.png","./icon-512.png",
   './live-moments.css?v=20260723-6',
   './live-moments.js?v=20260723-6',
   './smart-photo-moments.css?v=20260723-1',
-  './smart-photo-moments.js?v=20260723-1'];
+  './smart-photo-moments.js?v=20260723-1',
+  './supabase-sync.js?v=20260723-2'];
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener("fetch",event=>{if(event.request.method!=="GET")return;const isNav=event.request.mode==="navigate"||event.request.destination==="document";if(isNav){event.respondWith(fetch(event.request).then(r=>{const c=r.clone();caches.open(CACHE).then(cache=>cache.put(event.request,c));return r}).catch(()=>caches.match(event.request).then(x=>x||caches.match("./index.html"))));return}event.respondWith(fetch(event.request).then(response=>{const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));return response}).catch(()=>caches.match(event.request))) });

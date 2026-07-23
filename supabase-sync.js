@@ -327,7 +327,109 @@
     }
   };
 
+
+
+  function injectCloudUi() {
+    if (document.getElementById('parisCloudButton')) return;
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .paris-cloud-button{position:fixed;right:16px;top:16px;z-index:9998;display:flex;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.55);border-radius:999px;padding:10px 14px;background:rgba(20,39,59,.88);color:#fff;box-shadow:0 10px 30px rgba(15,31,48,.24);backdrop-filter:blur(14px);font:800 12px/1.1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer;transition:.25s ease}
+      .paris-cloud-button:hover{transform:translateY(-1px)}
+      .paris-cloud-button .cloud-dot{width:9px;height:9px;border-radius:50%;background:#f2c86b;box-shadow:0 0 0 5px rgba(242,200,107,.15)}
+      .paris-cloud-button.is-ready .cloud-dot{background:#6ed59d;box-shadow:0 0 0 5px rgba(110,213,157,.15)}
+      .paris-cloud-button.is-offline .cloud-dot{background:#ef8a8a;box-shadow:0 0 0 5px rgba(239,138,138,.15)}
+      .paris-cloud-modal{position:fixed;inset:0;z-index:10020;display:none;place-items:center;padding:20px;background:rgba(10,24,38,.55);backdrop-filter:blur(8px)}
+      .paris-cloud-modal.is-open{display:grid}
+      .paris-cloud-card{width:min(520px,100%);border-radius:28px;padding:26px;background:#fffaf3;color:#203247;box-shadow:0 28px 80px rgba(8,24,39,.32);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+      .paris-cloud-card h2{margin:8px 0 10px;font:900 clamp(25px,6vw,34px)/1.05 Georgia,serif;color:#203247}
+      .paris-cloud-card p{margin:0 0 14px;line-height:1.6;color:#5f6c79}
+      .paris-cloud-badge{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 12px;background:#e8f7ef;color:#23734b;font-size:12px;font-weight:900}
+      .paris-cloud-code{margin:16px 0;padding:14px 16px;border-radius:18px;background:#eef3f7;border:1px solid #dbe4eb}
+      .paris-cloud-code small{display:block;margin-bottom:5px;color:#788795;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+      .paris-cloud-code strong{font-size:17px;letter-spacing:.04em;word-break:break-word}
+      .paris-cloud-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+      .paris-cloud-actions button{flex:1;min-width:150px;border:0;border-radius:999px;padding:13px 16px;font-weight:900;cursor:pointer}
+      .paris-cloud-close{background:#203247;color:white}
+      .paris-cloud-retry{background:#eee3d3;color:#203247}
+      .paris-cloud-toast{position:fixed;left:50%;bottom:24px;z-index:10010;max-width:calc(100% - 32px);transform:translate(-50%,24px);opacity:0;padding:12px 17px;border-radius:999px;background:#203247;color:#fff;box-shadow:0 14px 38px rgba(8,24,39,.3);font:800 13px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:.35s ease;pointer-events:none;text-align:center}
+      .paris-cloud-toast.is-visible{transform:translate(-50%,0);opacity:1}
+      @media(max-width:700px){.paris-cloud-button{top:10px;right:10px;padding:9px 11px}.paris-cloud-button .cloud-label{max-width:122px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.paris-cloud-card{padding:22px;border-radius:24px}}
+    `;
+    document.head.appendChild(style);
+
+    const button = document.createElement('button');
+    button.id = 'parisCloudButton';
+    button.type = 'button';
+    button.className = 'paris-cloud-button';
+    button.innerHTML = '<span class="cloud-dot"></span><span class="cloud-label">Cloud wird verbunden …</span>';
+
+    const modal = document.createElement('div');
+    modal.id = 'parisCloudModal';
+    modal.className = 'paris-cloud-modal';
+    modal.setAttribute('aria-hidden', 'true');
+    modal.innerHTML = `
+      <div class="paris-cloud-card" role="dialog" aria-modal="true" aria-labelledby="parisCloudTitle">
+        <span class="paris-cloud-badge" id="parisCloudBadge">⏳ Verbindung wird geprüft</span>
+        <h2 id="parisCloudTitle">Unsere gemeinsame Paris-Reise</h2>
+        <p id="parisCloudText">Dieses Gerät meldet sich automatisch anonym an und verbindet sich mit eurer gemeinsamen Reise.</p>
+        <div class="paris-cloud-code"><small>Gemeinsame Reise</small><strong>${TRIP_CODE}</strong></div>
+        <p><strong>So kommt Luisas Handy dazu:</strong><br>Einfach dieselbe Internetadresse öffnen. Es ist kein Konto, kein Passwort und kein manuell einzugebender Code nötig.</p>
+        <div class="paris-cloud-actions">
+          <button type="button" class="paris-cloud-retry" id="parisCloudRetry">Verbindung neu prüfen</button>
+          <button type="button" class="paris-cloud-close" id="parisCloudClose">Verstanden</button>
+        </div>
+      </div>`;
+
+    const toast = document.createElement('div');
+    toast.id = 'parisCloudToast';
+    toast.className = 'paris-cloud-toast';
+    toast.textContent = '☁️ Dieses Gerät ist mit eurer Paris-Reise verbunden.';
+
+    document.body.append(button, modal, toast);
+    const close = () => { modal.classList.remove('is-open'); modal.setAttribute('aria-hidden','true'); };
+    button.addEventListener('click', () => { modal.classList.add('is-open'); modal.setAttribute('aria-hidden','false'); });
+    modal.addEventListener('click', event => { if (event.target === modal) close(); });
+    document.getElementById('parisCloudClose').addEventListener('click', close);
+    document.getElementById('parisCloudRetry').addEventListener('click', () => window.location.reload());
+  }
+
+  function setCloudUi(status, message) {
+    injectCloudUi();
+    const button = document.getElementById('parisCloudButton');
+    const label = button?.querySelector('.cloud-label');
+    const badge = document.getElementById('parisCloudBadge');
+    const text = document.getElementById('parisCloudText');
+    button?.classList.remove('is-ready','is-offline');
+    if (status === 'ready') {
+      button?.classList.add('is-ready');
+      if (label) label.textContent = 'Gemeinsam verbunden';
+      if (badge) { badge.textContent = '✓ Supabase verbunden'; badge.style.background = '#e8f7ef'; badge.style.color = '#23734b'; }
+      if (text) text.textContent = 'Dieses Gerät ist verbunden. Änderungen an gemeinsamen Inhalten werden automatisch mit dem anderen Handy synchronisiert.';
+    } else if (status === 'offline') {
+      button?.classList.add('is-offline');
+      if (label) label.textContent = 'Cloud nicht verbunden';
+      if (badge) { badge.textContent = '⚠ Verbindung fehlgeschlagen'; badge.style.background = '#fdeaea'; badge.style.color = '#9b3535'; }
+      if (text) text.textContent = message || 'Supabase konnte nicht erreicht werden. Die App bleibt lokal nutzbar; tippe unten auf „Verbindung neu prüfen“.';
+    } else {
+      if (label) label.textContent = 'Cloud wird verbunden …';
+    }
+  }
+
+  function showConnectedToast() {
+    const toast = document.getElementById('parisCloudToast');
+    if (!toast) return;
+    const reveal = () => {
+      toast.classList.add('is-visible');
+      window.setTimeout(() => toast.classList.remove('is-visible'), 4200);
+    };
+    const introButton = document.getElementById('parisIntroOpen');
+    if (document.getElementById('parisIntro') && introButton) introButton.addEventListener('click', () => window.setTimeout(reveal, 1050), { once:true });
+    else window.setTimeout(reveal, 500);
+  }
+
   async function start() {
+    setCloudUi('connecting');
     try {
       await ensureSession();
       await ensureTrip();
@@ -335,9 +437,12 @@
       subscribe();
       document.documentElement.dataset.cloudSync = 'ready';
       document.dispatchEvent(new CustomEvent('paris:cloud-ready', { detail: { tripId } }));
+      setCloudUi('ready');
+      showConnectedToast();
     } catch (error) {
       console.error('Supabase konnte nicht gestartet werden:', error);
       document.documentElement.dataset.cloudSync = 'offline';
+      setCloudUi('offline', error.message);
     } finally { readyResolve(); }
   }
 
