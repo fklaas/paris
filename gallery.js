@@ -445,7 +445,7 @@
     els.days.innerHTML = '';
     GROUPS.forEach(group => els.days.appendChild(renderDay(group)));
     updateStats();
-    window.dispatchEvent(new CustomEvent('paris-gallery-updated', { detail: { count: state.photos.length } }));
+    document.dispatchEvent(new CustomEvent('paris:gallery-updated', { detail: { count: state.photos.length } }));
   }
 
   function updateStats() {
