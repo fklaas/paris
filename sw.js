@@ -1,4 +1,4 @@
-const CACHE = 'paris-reise-v-gallery-camera-idempotent-3';
+const CACHE = 'paris-reise-v-budget-sync-1';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
   './ambient.css','./ambient.js','./gallery.css','./reisebuch.css','./reisebuch.js',
