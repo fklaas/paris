@@ -1,6 +1,8 @@
 
-const CACHE="paris-reise-v-gallery-journal-2";
+const CACHE="paris-reise-v-ambient-cinematic-1";
 const ASSETS=["./","./index.html",
+  "./ambient.css","./ambient.js","./revue.html","./revue.css","./revue.js",
+  "./audio/ambient-home.ogg","./audio/ambient-road.ogg","./audio/ambient-hotel.ogg","./audio/ambient-paris.ogg","./audio/ambient-seine.ogg","./audio/ambient-cafe.ogg","./audio/ambient-disney.ogg","./audio/ambient-night.ogg",
   "./reisebuch.css",
   "./reisebuch.js",
   "./assistant.js","./gallery.css","./gallery.js","./manifest.webmanifest","./icon-192.png","./icon-512.png","./carte-food-perruche-summer.pdf","./Elio.pdf","./menu-perruche-1.jpg","./menu-perruche-2.jpg","./menu-perruche-3.jpg","./menu-perruche-4.jpg","./menu-perruche-5.jpg","./menu-perruche-6.jpg","./menu-elio-1.webp","./menu-elio-2.webp","./menu-elio-3.webp","./menu-elio-4.webp","./fotospot-trocadero.webp","./fotospot-alexandre.webp","./fotospot-louvre.webp","./fotospot-disney.webp","./fotospot-universite.webp","./fotospot-seine.webp","./app-icon-apple-maps.svg","./app-icon-google-maps.svg","./app-icon-citymapper.svg","./app-icon-idfm.svg","./app-icon-disneyland.svg","./app-icon-translate.svg","./app-icon-chatgpt.svg","./app-icon-thefork.svg"];
