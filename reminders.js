@@ -13,6 +13,7 @@
   const FIXED_KEYS = Array.from(checklist.querySelectorAll('[data-memory]')).map(el => el.dataset.memory);
   const statusMap = new Map();
   const pending = new Map();
+  const writeGuards = new Map();
   let customRows = [];
   let refreshRunning = false;
   let refreshQueued = false;
@@ -23,15 +24,27 @@
 
   function keyForCustom(id) { return `custom:${id}`; }
 
+  function guardedValue(key) {
+    const guard = writeGuards.get(key);
+    if (!guard) return null;
+    if (Date.now() > guard.until) { writeGuards.delete(key); return null; }
+    return guard.value;
+  }
+
   function applyCheckboxState(box, key) {
-    const value = pending.has(key) ? pending.get(key) : Boolean(statusMap.get(key)?.completed);
+    const guarded = guardedValue(key);
+    const value = pending.has(key) ? pending.get(key) : guarded !== null ? guarded : Boolean(statusMap.get(key)?.completed);
     box.checked = value;
     box.closest('.memory-check')?.classList.toggle('is-complete', value);
   }
 
   function updateProgress() {
     const allKeys = [...FIXED_KEYS, ...customRows.map(row => keyForCustom(row.id))];
-    const done = allKeys.filter(key => pending.has(key) ? pending.get(key) : statusMap.get(key)?.completed).length;
+    const done = allKeys.filter(key => {
+      if (pending.has(key)) return pending.get(key);
+      const guarded = guardedValue(key);
+      return guarded !== null ? guarded : Boolean(statusMap.get(key)?.completed);
+    }).length;
     const total = allKeys.length;
     const percent = total ? Math.round(done / total * 100) : 0;
     if (progressCount) progressCount.textContent = `${done} / ${total}`;
@@ -44,18 +57,30 @@
   }
 
   async function changeStatus(key, checked, box) {
+    const previous = Boolean(statusMap.get(key)?.completed);
     pending.set(key, checked);
+    writeGuards.set(key, { value: checked, until: Date.now() + 8000 });
     applyCheckboxState(box, key);
     updateProgress();
     try {
       const saved = await window.ParisSync.reminders.setCompleted(key, checked);
       statusMap.set(key, saved);
+      pending.delete(key);
+      writeGuards.set(key, { value: checked, until: Date.now() + 3500 });
+      applyCheckboxState(box, key);
+      updateProgress();
+      setTimeout(() => {
+        const guard = writeGuards.get(key);
+        if (guard && guard.value === checked) {
+          writeGuards.delete(key);
+          refresh();
+        }
+      }, 3600);
     } catch (error) {
       console.error('Erinnerung konnte nicht gespeichert werden:', error);
       pending.delete(key);
-      applyCheckboxState(box, key);
-    } finally {
-      pending.delete(key);
+      writeGuards.delete(key);
+      statusMap.set(key, { ...(statusMap.get(key) || { key }), completed: previous });
       applyCheckboxState(box, key);
       updateProgress();
     }
@@ -148,8 +173,24 @@
         window.ParisSync.reminders.listCustom()
       ]);
       await migrateLocalOnce(statuses);
-      statusMap.clear();
-      statuses.forEach(item => statusMap.set(item.key, item));
+      const incoming = new Map(statuses.map(item => [item.key, item]));
+      const allKeys = new Set([...statusMap.keys(), ...incoming.keys()]);
+      allKeys.forEach(key => {
+        const remote = incoming.get(key);
+        const guard = writeGuards.get(key);
+        if (guard && Date.now() <= guard.until) {
+          if (remote && Boolean(remote.completed) === guard.value) {
+            statusMap.set(key, remote);
+            writeGuards.delete(key);
+          } else {
+            statusMap.set(key, { ...(statusMap.get(key) || { key }), completed: guard.value });
+          }
+        } else if (remote) {
+          statusMap.set(key, remote);
+        } else {
+          statusMap.delete(key);
+        }
+      });
       customRows = customs;
       renderCustom();
     } catch (error) {
