@@ -75,10 +75,12 @@
   $('#createTravelBook').addEventListener('click',generate);$('#closeTravelBook').addEventListener('click',close);$('#bookRegenerate').addEventListener('click',generate);$('#bookPrint').addEventListener('click',()=>window.print());modal.addEventListener('click',e=>{if(e.target===modal)close()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('is-open'))close()});
   window.addEventListener('storage',collect);document.addEventListener('change',e=>{if(e.target.matches('[data-memory],[data-recap]'))setTimeout(collect,50)});document.addEventListener('input',e=>{if(e.target.matches('.gallery-note,[data-recap]'))setTimeout(collect,80)});
   collect();setInterval(collect,10000);
-  const openFromRevue=new URLSearchParams(location.search).get('openBook')==='1';
+  const openFromRevue=sessionStorage.getItem('paris-open-book-from-revue')==='1'||new URLSearchParams(location.search).get('openBook')==='1';
+  document.getElementById('reise-revue')?.classList.add('is-visible');
+  document.getElementById('reisebuch')?.classList.add('is-visible');
   if(openFromRevue){
-    const clean=new URL(location.href);clean.searchParams.delete('openBook');
-    history.replaceState(null,'',clean.pathname+clean.hash);
-    setTimeout(()=>{document.getElementById('reisebuch')?.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(generate,650)},350);
+    sessionStorage.removeItem('paris-open-book-from-revue');
+    const clean=new URL(location.href);clean.searchParams.delete('openBook');history.replaceState(null,'',clean.pathname+'#reise-revue');
+    setTimeout(()=>{document.getElementById('reise-revue')?.classList.add('is-visible');document.getElementById('reisebuch')?.classList.add('is-visible');document.getElementById('reisebuch')?.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(generate,700)},350);
   }
 })();

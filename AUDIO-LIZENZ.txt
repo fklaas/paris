@@ -1,5 +1,5 @@
-AUDIO-HINWEIS – Paris ’26
+AUDIO-HINWEIS
 
-Die für „Vorfreude auf Paris“, „Unterwegs nach Paris“ und „Französische Straßenmusik“ verwendeten Instrumentalstücke wurden eigens für dieses private Projekt erzeugt und dürfen innerhalb dieses Projekts frei genutzt, kopiert und verändert werden. Sie enthalten keine Samples, Melodien oder Aufnahmen Dritter.
+Die Dateien ambient-home.ogg, ambient-road.ogg und ambient-paris.ogg enthalten eine eigens für dieses private Reiseprojekt synthetisch erzeugte, originale Instrumentalbegleitung im leichten Musette-/Café-Stil. Sie basiert auf keiner bekannten Melodie und enthält keine fremden Samples, keine Verkehrsgeräusche und keine extern lizenzierte Musik.
 
-Bei der Recherche wurden unter anderem passende lizenzfreie französische Akkordeon- und Café-Stücke unter der Pixabay Content License geprüft. Um unklare Weiterverteilungs- oder Content-ID-Risiken zu vermeiden, wurden im ausgelieferten ZIP jedoch ausschließlich die eigens erzeugten Instrumentaldateien verwendet.
+Die übrigen Ambient-Dateien sind ebenfalls ausschließlich für die lokale Atmosphäre dieses Projekts vorgesehen.
