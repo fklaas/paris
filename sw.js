@@ -1,4 +1,4 @@
-const CACHE = 'paris-reise-v-budget-sync-2';
+const CACHE = 'paris-reise-v-budget-edit-lock-1';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
   './ambient.css','./ambient.js','./gallery.css','./reisebuch.css','./reisebuch.js',

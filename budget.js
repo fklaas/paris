@@ -3,6 +3,7 @@
 
   const euro = value => Number(value || 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
   const pending = new Map();
+  let limitPending = false;
   let rows = [];
   let limitValue = 600;
   let refreshRunning = false;
@@ -29,14 +30,47 @@
 
   function scheduleSave(id, patch) {
     const previous = pending.get(id);
-    if (previous) clearTimeout(previous.timer);
-    const merged = { ...(previous?.patch || {}), ...patch };
-    const timer = setTimeout(async () => {
-      pending.delete(id);
-      try { await window.ParisSync.budget.update(id, merged); }
-      catch (error) { console.error('Budget konnte nicht gespeichert werden:', error); }
-    }, 350);
-    pending.set(id, { patch: merged, timer });
+    if (previous?.timer) clearTimeout(previous.timer);
+
+    const state = {
+      patch: { ...(previous?.patch || {}), ...patch },
+      revision: (previous?.revision || 0) + 1,
+      saving: previous?.saving || false,
+      timer: null
+    };
+
+    const revision = state.revision;
+    state.timer = setTimeout(async () => {
+      const current = pending.get(id);
+      if (!current || current.revision !== revision) return;
+
+      current.timer = null;
+      current.saving = true;
+      const snapshot = { ...current.patch };
+
+      try {
+        const saved = await window.ParisSync.budget.update(id, snapshot);
+        const latest = pending.get(id);
+
+        if (saved) {
+          const row = rows.find(item => item.id === id);
+          if (row) Object.assign(row, saved);
+        }
+
+        if (latest && latest.revision === revision) {
+          pending.delete(id);
+        } else if (latest) {
+          latest.saving = false;
+          scheduleSave(id, {});
+        }
+      } catch (error) {
+        const latest = pending.get(id);
+        if (latest) latest.saving = false;
+        console.error('Budget konnte nicht gespeichert werden:', error);
+      }
+    }, 650);
+
+    pending.set(id, state);
   }
 
   function render() {
@@ -111,14 +145,31 @@
         // budget_settings-Tabelle noch nicht für die Data API freigegeben wurde.
         console.error('Gesamtbudget konnte nicht aus der Cloud geladen werden:', limitError);
       }
+      const active = document.activeElement;
+      const activeRowId = active?.closest?.('.budget-row')?.dataset.id;
+      const activeField = active?.dataset?.field;
+      const activeValue = active?.value;
+      const limitIsActive = active === limit;
+
       const localById = new Map(rows.map(row => [row.id, row]));
       rows = cloudRows.map(row => {
         const local = localById.get(row.id);
         const pendingEdit = pending.get(row.id)?.patch;
-        return pendingEdit ? { ...row, ...local, ...pendingEdit } : row;
+        const merged = pendingEdit ? { ...row, ...local, ...pendingEdit } : { ...row };
+
+        // Ein Feld, in dem gerade geschrieben wird, darf niemals von einem
+        // älteren Realtime-/Polling-Stand überschrieben werden.
+        if (row.id === activeRowId && activeField && local) {
+          if (activeField === 'name') merged.name = String(activeValue ?? local.name ?? '');
+          if (activeField === 'amount') merged.amount = Number(activeValue) || 0;
+        }
+        return merged;
       });
-      limitValue = cloudLimit;
-      limit.value = String(limitValue);
+
+      if (!limitPending && !limitIsActive) {
+        limitValue = cloudLimit;
+        limit.value = String(limitValue);
+      }
       render();
     } catch (error) {
       console.error('Budget konnte nicht synchronisiert werden:', error);
@@ -147,11 +198,24 @@
   let limitTimer;
   limit.addEventListener('input', () => {
     limitValue = Math.max(0, Number(limit.value) || 0);
+    limitPending = true;
     updateSummary();
     clearTimeout(limitTimer);
-    limitTimer = setTimeout(() => window.ParisSync.budget.setLimit(limitValue).catch(error => {
-      console.error('Gesamtbudget konnte nicht gespeichert werden:', error);
-    }), 350);
+    const valueToSave = limitValue;
+    limitTimer = setTimeout(async () => {
+      try {
+        await window.ParisSync.budget.setLimit(valueToSave);
+        if (limitValue === valueToSave) limitPending = false;
+      } catch (error) {
+        console.error('Gesamtbudget konnte nicht gespeichert werden:', error);
+      }
+    }, 650);
+  });
+
+  limit.addEventListener('blur', () => {
+    // Nach dem Verlassen bleibt der lokale Wert geschützt, bis Supabase die
+    // Änderung bestätigt hat. Anschließend wird der gemeinsame Stand geladen.
+    if (!limitPending) refresh();
   });
 
   async function init() {
