@@ -1,10 +1,42 @@
-const CACHE="paris-reise-v-sync-foundation-gallery-2";
-const ASSETS=["./","./index.html","./ambient.css","./ambient.js","./dynamic-background.css?v=20260723-6","./dynamic-background.js?v=20260723-6","./revue.html","./revue.css","./revue.js","./audio/ambient-home.ogg","./audio/ambient-home.mp3","./audio/ambient-road.ogg","./audio/ambient-road.mp3","./audio/ambient-hotel.ogg","./audio/ambient-hotel.mp3","./audio/ambient-paris.ogg","./audio/ambient-paris.mp3","./audio/ambient-seine.ogg","./audio/ambient-seine.mp3","./audio/ambient-cafe.ogg","./audio/ambient-cafe.mp3","./audio/ambient-disney.ogg","./audio/ambient-disney.mp3","./audio/ambient-night.ogg","./audio/ambient-night.mp3","./reisebuch.css","./reisebuch.js","./assistant.js","./gallery.css","./gallery.js?v=20260723-3","./manifest.webmanifest","./icon-192.png","./icon-512.png",
-  './live-moments.css?v=20260723-6',
-  './live-moments.js?v=20260723-6',
-  './smart-photo-moments.css?v=20260723-1',
-  './smart-photo-moments.js?v=20260723-1',
-  './supabase-sync.js?v=20260723-2','./sync/core.js?v=20260723-1','./sync/gallery.js?v=20260723-2'];
-self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
-self.addEventListener("activate",event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener("fetch",event=>{if(event.request.method!=="GET")return;const isNav=event.request.mode==="navigate"||event.request.destination==="document";if(isNav){event.respondWith(fetch(event.request).then(r=>{const c=r.clone();caches.open(CACHE).then(cache=>cache.put(event.request,c));return r}).catch(()=>caches.match(event.request).then(x=>x||caches.match("./index.html"))));return}event.respondWith(fetch(event.request).then(response=>{const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));return response}).catch(()=>caches.match(event.request))) });
+const CACHE = 'paris-reise-v-gallery-authoritative-1';
+const STATIC_ASSETS = [
+  './manifest.webmanifest','./icon-192.png','./icon-512.png',
+  './ambient.css','./ambient.js','./gallery.css','./reisebuch.css','./reisebuch.js',
+  './live-moments.css','./smart-photo-moments.css','./revue.css'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()));
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  const isAppCode = event.request.mode === 'navigate' || /\.(?:html|js)$/i.test(url.pathname);
+
+  if (isAppCode) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' })
+        .catch(() => caches.match(event.request).then(hit => hit || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then(hit => hit || fetch(event.request).then(response => {
+      if (response.ok && url.origin === self.location.origin) {
+        const copy = response.clone();
+        caches.open(CACHE).then(cache => cache.put(event.request, copy));
+      }
+      return response;
+    }))
+  );
+});

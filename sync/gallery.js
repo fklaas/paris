@@ -3,6 +3,7 @@
 
   const BUCKET = 'paris-gallery';
   let channel = null;
+  let channelStatus = 'CLOSED';
 
   function extensionFor(photo) {
     return (photo.originalName?.split('.').pop() || photo.blob?.type?.split('/').pop() || 'jpg')
@@ -43,16 +44,21 @@
   const api = {
     bucket: BUCKET,
 
-    async list() {
+    async listRows() {
       const { client, tripId } = await context();
       const { data, error } = await client.from('gallery_photos')
         .select('*')
         .eq('trip_id', tripId)
         .order('taken_at', { ascending: true });
       if (error) throw error;
+      return data || [];
+    },
 
+    async list() {
+      const { client } = await context();
+      const rows = await this.listRows();
       const photos = [];
-      for (const row of data || []) {
+      for (const row of rows) {
         try { photos.push(await downloadRow(client, row)); }
         catch (error) { console.warn(`Cloud-Foto ${row.id} konnte nicht geladen werden:`, error.message); }
       }
@@ -145,15 +151,29 @@
       if (result.error) throw result.error;
     },
 
-    async subscribe(callback) {
+    async subscribe(callback, statusCallback) {
       const { client, tripId } = await context();
       if (channel) await client.removeChannel(channel);
-      channel = client.channel(`paris-sync-gallery-${tripId}`)
+      channelStatus = 'CONNECTING';
+      const channelName = `paris-sync-gallery-${tripId}-${Math.random().toString(36).slice(2)}`;
+      channel = client.channel(channelName, { config: { broadcast: { self: true } } })
         .on('postgres_changes', {
           event: '*', schema: 'public', table: 'gallery_photos', filter: `trip_id=eq.${tripId}`
         }, payload => callback(payload))
-        .subscribe();
-      return () => client.removeChannel(channel);
+        .subscribe(status => {
+          channelStatus = status;
+          if (statusCallback) statusCallback(status);
+        });
+      return () => {
+        const current = channel;
+        channel = null;
+        channelStatus = 'CLOSED';
+        return current ? client.removeChannel(current) : Promise.resolve();
+      };
+    },
+
+    getRealtimeStatus() {
+      return channelStatus;
     }
   };
 

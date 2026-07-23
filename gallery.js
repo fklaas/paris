@@ -50,7 +50,11 @@
     photos: [],
     urls: new Map(),
     notes: loadNotes(),
-    busy: false
+    busy: false,
+    reconcileBusy: false,
+    realtimeStatus: 'CLOSED',
+    unsubscribe: null,
+    reconcileTimer: null
   };
   const $ = (selector, root = document) => root.querySelector(selector);
   const els = {};
@@ -464,6 +468,82 @@
     els.bookSummary.textContent = `${state.photos.length} Fotos, ${favorites} Favoriten und ${notes} Tagesnotizen sind lokal für das spätere Reisebuch vorbereitet.`;
   }
 
+
+  function applyRowMetadata(photo, row) {
+    photo.favorite = Boolean(row.is_favorite);
+    photo.polaroid = Boolean(row.is_polaroid);
+    photo.caption = row.description ?? row.caption ?? '';
+    photo.storagePath = row.storage_path;
+    photo.originalName = row.original_filename || photo.originalName;
+    photo.size = row.file_size ?? photo.size;
+    photo.takenAt = row.taken_at || row.created_at;
+    photo.createdAt = row.created_at;
+    photo.updatedAt = row.updated_at || row.created_at;
+    const key = dateKey(new Date(photo.takenAt));
+    photo.dateKey = key;
+    photo.group = tripGroup(key);
+  }
+
+  async function reconcileFromCloud({ forceRender = false } = {}) {
+    if (!window.ParisSync?.gallery || state.reconcileBusy || document.hidden) return;
+    state.reconcileBusy = true;
+    let changed = false;
+    try {
+      const rows = await window.ParisSync.gallery.listRows();
+      const remoteById = new Map(rows.map(row => [row.id, row]));
+
+      for (const local of [...state.photos]) {
+        if (!remoteById.has(local.id)) {
+          await del(local.id);
+          cleanupUrl(local.id);
+          state.photos = state.photos.filter(photo => photo.id !== local.id);
+          changed = true;
+        }
+      }
+
+      for (const row of rows) {
+        const local = state.photos.find(photo => photo.id === row.id);
+        if (!local) {
+          const fresh = await window.ParisSync.gallery.get(row.id);
+          if (fresh) {
+            fresh.updatedAt = row.updated_at || row.created_at;
+            state.photos.push(fresh);
+            await put(fresh);
+            changed = true;
+          }
+          continue;
+        }
+        const remoteStamp = String(row.updated_at || row.created_at || '');
+        const localStamp = String(local.updatedAt || local.createdAt || '');
+        const metadataChanged = remoteStamp !== localStamp ||
+          local.favorite !== Boolean(row.is_favorite) ||
+          local.polaroid !== Boolean(row.is_polaroid) ||
+          local.caption !== (row.description ?? row.caption ?? '');
+        if (metadataChanged) {
+          applyRowMetadata(local, row);
+          await put(local);
+          changed = true;
+        }
+      }
+      if (changed || forceRender) render();
+    } catch (error) {
+      console.warn('Galerie-Abgleich:', error.message);
+    } finally {
+      state.reconcileBusy = false;
+    }
+  }
+
+  function startCloudGuard() {
+    clearInterval(state.reconcileTimer);
+    state.reconcileTimer = setInterval(() => reconcileFromCloud(), 2000);
+    const wake = () => {
+      if (!document.hidden) reconcileFromCloud({ forceRender: false });
+    };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('focus', wake);
+    window.addEventListener('online', wake);
+  }
+
   async function exportMetadata() {
     const data = {
       version: 2,
@@ -545,10 +625,13 @@
         state.urls.clear();
         state.photos = remotePhotos;
 
-        await window.ParisSync.gallery.subscribe(async payload => {
+        state.unsubscribe = await window.ParisSync.gallery.subscribe(async payload => {
           try {
             const id = payload.new?.id || payload.old?.id;
-            if (!id) return;
+            if (!id) {
+              await reconcileFromCloud();
+              return;
+            }
 
             if (payload.eventType === 'DELETE') {
               await del(id);
@@ -561,20 +644,19 @@
             if (payload.eventType === 'UPDATE') {
               const photo = state.photos.find(item => item.id === id);
               if (photo) {
-                const row = payload.new;
-                photo.favorite = Boolean(row.is_favorite);
-                photo.polaroid = Boolean(row.is_polaroid);
-                photo.caption = row.description ?? row.caption ?? '';
-                photo.takenAt = row.taken_at || row.created_at;
+                applyRowMetadata(photo, payload.new);
                 await put(photo);
                 render();
                 return;
               }
             }
 
-            // Bei neuen Bildern muss die Datei einmal aus Storage geladen werden.
             const freshPhoto = await window.ParisSync.gallery.get(id);
-            if (!freshPhoto) return;
+            if (!freshPhoto) {
+              await reconcileFromCloud();
+              return;
+            }
+            freshPhoto.updatedAt = payload.new?.updated_at || payload.new?.created_at;
             const oldIndex = state.photos.findIndex(photo => photo.id === id);
             if (oldIndex >= 0) {
               cleanupUrl(id);
@@ -586,8 +668,13 @@
             render();
           } catch (error) {
             console.warn('Galerie-Realtime:', error.message);
+            await reconcileFromCloud();
           }
+        }, status => {
+          state.realtimeStatus = status;
+          if (status === 'SUBSCRIBED') reconcileFromCloud();
         });
+        startCloudGuard();
       }
       await normalizePolaroids();
       render();
