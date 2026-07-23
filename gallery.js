@@ -291,7 +291,7 @@
       for (const photo of selected.slice(1)) {
         photo.polaroid = false;
         await put(photo);
-        if (window.ParisSync?.gallery) window.ParisSync.gallery.update(photo.id, { polaroid: false }).catch(error => console.warn('Cloud-Polaroid:', error.message));
+        if (window.ParisSync?.gallery) await window.ParisSync.gallery.update(photo.id, { polaroid: false });
       }
     }
   }
@@ -301,7 +301,7 @@
     if (!photo) return;
     Object.assign(photo, patch);
     await put(photo);
-    if (window.ParisSync?.gallery) window.ParisSync.gallery.update(id, patch).catch(error => console.warn('Cloud-Foto:', error.message));
+    if (window.ParisSync?.gallery) await window.ParisSync.gallery.update(id, patch);
     if (rerender) render();
   }
 
@@ -322,7 +322,7 @@
       if (photo.polaroid !== value) {
         photo.polaroid = value;
         await put(photo);
-        if (window.ParisSync?.gallery) window.ParisSync.gallery.update(photo.id, { polaroid: value }).catch(error => console.warn('Cloud-Polaroid:', error.message));
+        if (window.ParisSync?.gallery) await window.ParisSync.gallery.update(photo.id, { polaroid: value });
       }
     }
     render();
@@ -332,8 +332,8 @@
   async function removePhoto(id) {
     if (!confirm('Dieses Foto aus der Reisegalerie entfernen?')) return;
     const photo = state.photos.find(item => item.id === id);
-    await del(id);
     if (window.ParisSync?.gallery && photo) await window.ParisSync.gallery.remove(photo);
+    await del(id);
     cleanupUrl(id);
     state.photos = state.photos.filter(photo => photo.id !== id);
     render();
@@ -343,8 +343,8 @@
   async function removeAll() {
     if (!state.photos.length && !Object.values(state.notes).some(value => String(value).trim())) return;
     if (!confirm('Alle lokal gespeicherten Galeriefotos und Tagesnotizen entfernen?')) return;
-    await clearAll();
     if (window.ParisSync?.gallery) await window.ParisSync.gallery.clear();
+    await clearAll();
     state.urls.forEach(url => URL.revokeObjectURL(url));
     state.urls.clear();
     state.photos = [];
@@ -536,26 +536,57 @@
       });
       if (window.ParisSync?.gallery) {
         await window.ParisSync.ready;
+        // Ab jetzt ist Supabase die einzige gemeinsame Quelle der Galerie.
+        // Alte lokale Bilder werden NICHT bei jedem Start erneut hochgeladen.
         const remotePhotos = await window.ParisSync.gallery.list();
-        const remoteIds = new Set(remotePhotos.map(photo => photo.id));
-        for (const localPhoto of state.photos.filter(photo => !remoteIds.has(photo.id))) {
-          if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(localPhoto.id)) {
-            await window.ParisSync.gallery.upload(localPhoto).catch(error => console.warn('Lokales Foto:', error.message));
-          }
-        }
+        await clearAll();
         for (const remotePhoto of remotePhotos) await put(remotePhoto);
-        state.photos = await getAll();
-        await window.ParisSync.gallery.subscribe(async () => {
+        state.urls.forEach(url => URL.revokeObjectURL(url));
+        state.urls.clear();
+        state.photos = remotePhotos;
+
+        await window.ParisSync.gallery.subscribe(async payload => {
           try {
-            const fresh = await window.ParisSync.gallery.list();
-            await clearAll();
-            for (const photo of fresh) await put(photo);
-            state.urls.forEach(url => URL.revokeObjectURL(url));
-            state.urls.clear();
-            state.photos = fresh;
+            const id = payload.new?.id || payload.old?.id;
+            if (!id) return;
+
+            if (payload.eventType === 'DELETE') {
+              await del(id);
+              cleanupUrl(id);
+              state.photos = state.photos.filter(photo => photo.id !== id);
+              render();
+              return;
+            }
+
+            if (payload.eventType === 'UPDATE') {
+              const photo = state.photos.find(item => item.id === id);
+              if (photo) {
+                const row = payload.new;
+                photo.favorite = Boolean(row.is_favorite);
+                photo.polaroid = Boolean(row.is_polaroid);
+                photo.caption = row.description ?? row.caption ?? '';
+                photo.takenAt = row.taken_at || row.created_at;
+                await put(photo);
+                render();
+                return;
+              }
+            }
+
+            // Bei neuen Bildern muss die Datei einmal aus Storage geladen werden.
+            const freshPhoto = await window.ParisSync.gallery.get(id);
+            if (!freshPhoto) return;
+            const oldIndex = state.photos.findIndex(photo => photo.id === id);
+            if (oldIndex >= 0) {
+              cleanupUrl(id);
+              state.photos[oldIndex] = freshPhoto;
+            } else {
+              state.photos.push(freshPhoto);
+            }
+            await put(freshPhoto);
             render();
-            toast('Galerie wurde synchronisiert');
-          } catch (error) { console.warn('Galerie-Synchronisierung:', error.message); }
+          } catch (error) {
+            console.warn('Galerie-Realtime:', error.message);
+          }
         });
       }
       await normalizePolaroids();

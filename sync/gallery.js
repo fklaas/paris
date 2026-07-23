@@ -34,6 +34,12 @@
     return window.ParisSync.requireReady();
   }
 
+  async function downloadRow(client, row) {
+    const file = await client.storage.from(BUCKET).download(row.storage_path);
+    if (file.error) throw file.error;
+    return rowToPhoto(row, file.data);
+  }
+
   const api = {
     bucket: BUCKET,
 
@@ -47,14 +53,18 @@
 
       const photos = [];
       for (const row of data || []) {
-        const file = await client.storage.from(BUCKET).download(row.storage_path);
-        if (file.error) {
-          console.warn(`Cloud-Foto ${row.id} konnte nicht geladen werden:`, file.error.message);
-          continue;
-        }
-        photos.push(rowToPhoto(row, file.data));
+        try { photos.push(await downloadRow(client, row)); }
+        catch (error) { console.warn(`Cloud-Foto ${row.id} konnte nicht geladen werden:`, error.message); }
       }
       return photos;
+    },
+
+    async get(id) {
+      const { client, tripId } = await context();
+      const result = await client.from('gallery_photos').select('*').eq('trip_id', tripId).eq('id', id).maybeSingle();
+      if (result.error) throw result.error;
+      if (!result.data) return null;
+      return downloadRow(client, result.data);
     },
 
     async upload(photo) {
