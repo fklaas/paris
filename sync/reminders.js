@@ -11,7 +11,7 @@
   function statusFromRow(row) {
     return {
       key: row.reminder_key,
-      completed: Boolean(row.completed),
+      completed: Boolean(row.is_completed),
       completedBy: row.completed_by || null,
       completedAt: row.completed_at || null,
       updatedAt: row.updated_at || null
@@ -31,7 +31,7 @@
     async listStatuses() {
       const { client, tripId } = await context();
       const { data, error } = await client.from('reminder_status')
-        .select('reminder_key,completed,completed_by,completed_at,updated_at')
+        .select('reminder_key,is_completed,completed_by,completed_at,updated_at')
         .eq('trip_id', tripId);
       if (error) throw error;
       return (data || []).map(statusFromRow);
@@ -43,13 +43,13 @@
       const payload = {
         trip_id: tripId,
         reminder_key: String(key),
-        completed: isDone,
+        is_completed: isDone,
         completed_by: isDone ? userId : null,
         completed_at: isDone ? new Date().toISOString() : null
       };
       const { data, error } = await client.from('reminder_status')
         .upsert(payload, { onConflict: 'trip_id,reminder_key' })
-        .select('reminder_key,completed,completed_by,completed_at,updated_at')
+        .select('reminder_key,is_completed,completed_by,completed_at,updated_at')
         .single();
       if (error) throw error;
       return statusFromRow(data);
