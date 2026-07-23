@@ -20,3 +20,13 @@
 #live-moments .live-moment-grid{display:grid!important;width:auto!important}
 #live-moments .live-moment-timeline{display:grid!important;width:auto!important}
 @media(max-width:560px){#live-moments .live-moment-ribbon-actions{max-width:62%!important}#live-moments .live-moment-main{display:grid!important;grid-template-columns:minmax(0,1fr)!important}#live-moments .live-moment-grid{grid-template-columns:minmax(0,1fr)!important}}
+
+/* 2026-07-23 · Overlay-Fix: Einstellungsfenster bleibt immer vor Illustration und Karten */
+#live-moments .live-moment-ribbon{position:relative;z-index:30;overflow:visible!important}
+#live-moments .live-moment-tools{position:relative;z-index:40}
+#live-moments .live-tools-panel{z-index:1000;pointer-events:auto!important;isolation:isolate}
+#live-moments .live-tools-panel *{pointer-events:auto}
+#live-moments .live-moment-main,#live-moments .live-moment-grid,#live-moments .live-moment-timeline-wrap{position:relative;z-index:1}
+#live-moments .live-moment-illustration{position:relative;z-index:0;pointer-events:none}
+#live-moments .live-moment-shell{overflow:visible}
+@media(max-width:560px){#live-moments .live-tools-panel{z-index:10050}}
