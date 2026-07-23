@@ -1,0 +1,42 @@
+:root{
+  --db-sky-top:#fff8f0;
+  --db-sky-bottom:#f4e8df;
+  --db-glow-a:rgba(239,118,144,.15);
+  --db-glow-b:rgba(91,158,190,.13);
+  --db-ink:rgba(103,75,88,.10);
+  --db-speed:1;
+  --db-opacity:1;
+}
+html{background:#f7eee7}
+body{position:relative;isolation:isolate;background:transparent!important;transition:color .8s ease}
+body:before{z-index:-1!important}
+.dynamic-background{position:fixed;inset:0;z-index:-3;overflow:hidden;pointer-events:none;background:linear-gradient(180deg,var(--db-sky-top),var(--db-sky-bottom));opacity:var(--db-opacity);transition:background 1.8s ease,opacity .8s ease;contain:strict}
+.dynamic-background:before{content:"";position:absolute;inset:-20%;background:radial-gradient(circle at 15% 18%,var(--db-glow-a),transparent 30%),radial-gradient(circle at 86% 22%,var(--db-glow-b),transparent 28%),radial-gradient(circle at 50% 110%,rgba(255,255,255,.55),transparent 42%);animation:dbLightShift calc(22s / var(--db-speed)) ease-in-out infinite alternate}
+.db-clouds,.db-lights,.db-stars,.db-weather,.db-silhouette,.db-landscape{position:absolute;inset:0;transition:opacity 1.3s ease,transform 1.3s ease}.db-clouds{opacity:.42;background:radial-gradient(ellipse at 10% 18%,rgba(255,255,255,.7) 0 7%,transparent 7.5%),radial-gradient(ellipse at 28% 13%,rgba(255,255,255,.54) 0 8%,transparent 8.5%),radial-gradient(ellipse at 78% 24%,rgba(255,255,255,.58) 0 9%,transparent 9.5%);filter:blur(10px);animation:dbCloudDrift calc(70s / var(--db-speed)) linear infinite}
+.db-lights{opacity:.34;background:radial-gradient(circle at 18% 34%,rgba(255,255,255,.9) 0 1px,transparent 2px),radial-gradient(circle at 72% 21%,rgba(255,255,255,.85) 0 1.5px,transparent 2.5px),radial-gradient(circle at 88% 60%,rgba(255,223,178,.72) 0 1px,transparent 2px);background-size:180px 180px,250px 250px,210px 210px;animation:dbSparkle calc(10s / var(--db-speed)) ease-in-out infinite alternate}
+.db-stars{opacity:0;background-image:radial-gradient(circle,rgba(255,255,255,.9) 0 1px,transparent 1.6px),radial-gradient(circle,rgba(255,223,174,.72) 0 1px,transparent 1.8px);background-size:62px 62px,97px 97px;background-position:0 0,24px 31px;animation:dbStars calc(7s / var(--db-speed)) ease-in-out infinite alternate}
+.db-silhouette{top:auto;height:34vh;min-height:230px;opacity:.28;background:linear-gradient(to top,var(--db-ink),transparent 70%);clip-path:polygon(0 100%,0 73%,5% 73%,5% 58%,9% 58%,9% 72%,15% 72%,15% 48%,21% 48%,21% 70%,29% 70%,29% 61%,35% 61%,35% 72%,43% 72%,47% 32%,49% 32%,50% 12%,51% 32%,53% 32%,57% 72%,65% 72%,65% 55%,71% 55%,71% 70%,78% 70%,78% 46%,85% 46%,85% 72%,91% 72%,91% 60%,96% 60%,96% 72%,100% 72%,100% 100%)}
+.db-landscape{opacity:0;top:auto;height:34vh;background:linear-gradient(165deg,transparent 0 42%,rgba(140,162,126,.10) 42% 52%,transparent 52%),linear-gradient(190deg,transparent 0 55%,rgba(107,139,117,.09) 55% 66%,transparent 66%);animation:dbRoadFlow calc(18s / var(--db-speed)) linear infinite;background-size:140% 100%}
+.db-weather{opacity:0;background-image:repeating-linear-gradient(112deg,transparent 0 20px,rgba(116,153,176,.14) 21px 22px,transparent 23px 43px);background-size:180% 180%;animation:dbRain calc(2.5s / var(--db-speed)) linear infinite}
+/* Reisephasen */
+body[data-bg-scene="pretrip"]{--db-sky-top:#fff9f2;--db-sky-bottom:#f5e9df;--db-glow-a:rgba(242,149,166,.18);--db-glow-b:rgba(129,178,194,.13);--db-ink:rgba(119,82,92,.08)}
+body[data-bg-scene="road"]{--db-sky-top:#f7f4ed;--db-sky-bottom:#dfe9e4;--db-glow-a:rgba(228,184,139,.16);--db-glow-b:rgba(109,151,160,.16)}
+body[data-bg-scene="road"] .db-landscape{opacity:.8}
+body[data-bg-scene="paris-day"]{--db-sky-top:#fff8ed;--db-sky-bottom:#e6eef0;--db-glow-a:rgba(244,172,143,.18);--db-glow-b:rgba(105,169,194,.18);--db-ink:rgba(93,76,86,.11)}
+body[data-bg-scene="hotel"]{--db-sky-top:#fffaf4;--db-sky-bottom:#eee8e2;--db-glow-a:rgba(222,184,153,.15);--db-glow-b:rgba(128,160,150,.12);--db-ink:rgba(104,85,75,.08)}
+body[data-bg-scene="seine"]{--db-sky-top:#f8fbfb;--db-sky-bottom:#dbeaf0;--db-glow-a:rgba(143,192,209,.2);--db-glow-b:rgba(241,181,151,.15);--db-ink:rgba(70,117,139,.10)}
+body[data-bg-scene="disney"]{--db-sky-top:#fff4fb;--db-sky-bottom:#e6e8ff;--db-glow-a:rgba(235,146,203,.22);--db-glow-b:rgba(121,145,222,.18);--db-ink:rgba(108,77,149,.10)}
+body[data-bg-scene="disney"] .db-lights{opacity:.72;filter:drop-shadow(0 0 5px rgba(255,255,255,.7))}
+body[data-bg-scene="night"]{--db-sky-top:#17182d;--db-sky-bottom:#45344a;--db-glow-a:rgba(119,103,190,.25);--db-glow-b:rgba(247,187,118,.14);--db-ink:rgba(255,222,177,.14)}
+body[data-bg-scene="night"] .db-stars{opacity:.68}body[data-bg-scene="night"] .db-clouds{opacity:.12}body[data-bg-scene="night"] .db-lights{opacity:.7}
+body[data-bg-scene="after"]{--db-sky-top:#fff8f1;--db-sky-bottom:#eadfd9;--db-glow-a:rgba(218,142,166,.14);--db-glow-b:rgba(180,151,128,.12);--db-ink:rgba(103,77,82,.08)}
+/* Wetter */
+body[data-bg-weather="rain"] .db-weather{opacity:.55}body[data-bg-weather="rain"] .db-clouds{opacity:.72}body[data-bg-weather="cloudy"] .db-clouds{opacity:.78}
+/* Modi */
+body[data-bg-mode="quiet"]{--db-speed:.45}.dynamic-background[data-mode="quiet"] .db-lights{opacity:.16}.dynamic-background[data-mode="quiet"] .db-weather{opacity:.25}
+body[data-bg-mode="off"] .dynamic-background{opacity:0}body[data-bg-mode="off"]{background:linear-gradient(180deg,#fffaf5,#f7eee7)!important}
+body.ambient-on[data-bg-mode="auto"]{--db-speed:1.18}.ambient-on .dynamic-background:before{filter:saturate(1.08)}
+.dynamic-background-settings{margin-top:15px;padding-top:14px;border-top:1px solid rgba(84,58,70,.10)}.dynamic-background-settings>span{display:block;margin-bottom:8px;color:#6c5861;font-size:12px;font-weight:900}.dynamic-background-options{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:5px;border-radius:14px;background:#f4edef}.dynamic-background-options button{border:0;border-radius:10px;padding:9px 5px;background:transparent;color:#745f68;font:800 11px/1.2 Inter,system-ui,sans-serif;cursor:pointer}.dynamic-background-options button.is-active{background:#fff;color:#4a3540;box-shadow:0 5px 14px rgba(66,42,53,.11)}.dynamic-background-hint{display:block;margin-top:7px;color:#8b7880;font-size:10.5px;line-height:1.4}
+@keyframes dbLightShift{to{transform:translate3d(5%,3%,0) scale(1.06)}}@keyframes dbCloudDrift{to{transform:translate3d(18%,2%,0)}}@keyframes dbSparkle{to{opacity:.52;transform:translateY(-5px)}}@keyframes dbStars{to{opacity:.9;transform:translateY(-2px)}}@keyframes dbRoadFlow{to{background-position:-140% 0}}@keyframes dbRain{to{background-position:-100px 180px}}
+@media(max-width:700px){.db-silhouette{height:27vh;min-height:180px;opacity:.2}.db-clouds{filter:blur(14px)}.dynamic-background:before{inset:-35%}.dynamic-background-options button{padding:10px 3px}}
+@media(prefers-reduced-motion:reduce){:root{--db-speed:.01}.dynamic-background *,.dynamic-background:before{animation:none!important}.dynamic-background{transition:none}.dynamic-background-settings .dynamic-background-options button{transition:none}}
