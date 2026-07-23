@@ -268,7 +268,7 @@
         };
         await put(item);
         state.photos.push(item);
-        if (window.ParisCloud) await window.ParisCloud.uploadPhoto(item);
+        if (window.ParisSync?.gallery) await window.ParisSync.gallery.upload(item);
         added++;
       }
       await normalizePolaroids();
@@ -291,7 +291,7 @@
       for (const photo of selected.slice(1)) {
         photo.polaroid = false;
         await put(photo);
-        if (window.ParisCloud) window.ParisCloud.updatePhoto(photo.id, { polaroid: false }).catch(error => console.warn('Cloud-Polaroid:', error.message));
+        if (window.ParisSync?.gallery) window.ParisSync.gallery.update(photo.id, { polaroid: false }).catch(error => console.warn('Cloud-Polaroid:', error.message));
       }
     }
   }
@@ -301,7 +301,7 @@
     if (!photo) return;
     Object.assign(photo, patch);
     await put(photo);
-    if (window.ParisCloud) window.ParisCloud.updatePhoto(id, patch).catch(error => console.warn('Cloud-Foto:', error.message));
+    if (window.ParisSync?.gallery) window.ParisSync.gallery.update(id, patch).catch(error => console.warn('Cloud-Foto:', error.message));
     if (rerender) render();
   }
 
@@ -322,7 +322,7 @@
       if (photo.polaroid !== value) {
         photo.polaroid = value;
         await put(photo);
-        if (window.ParisCloud) window.ParisCloud.updatePhoto(photo.id, { polaroid: value }).catch(error => console.warn('Cloud-Polaroid:', error.message));
+        if (window.ParisSync?.gallery) window.ParisSync.gallery.update(photo.id, { polaroid: value }).catch(error => console.warn('Cloud-Polaroid:', error.message));
       }
     }
     render();
@@ -333,7 +333,7 @@
     if (!confirm('Dieses Foto aus der Reisegalerie entfernen?')) return;
     const photo = state.photos.find(item => item.id === id);
     await del(id);
-    if (window.ParisCloud && photo) await window.ParisCloud.deletePhoto(photo);
+    if (window.ParisSync?.gallery && photo) await window.ParisSync.gallery.remove(photo);
     cleanupUrl(id);
     state.photos = state.photos.filter(photo => photo.id !== id);
     render();
@@ -344,7 +344,7 @@
     if (!state.photos.length && !Object.values(state.notes).some(value => String(value).trim())) return;
     if (!confirm('Alle lokal gespeicherten Galeriefotos und Tagesnotizen entfernen?')) return;
     await clearAll();
-    if (window.ParisCloud) await window.ParisCloud.clearPhotos();
+    if (window.ParisSync?.gallery) await window.ParisSync.gallery.clear();
     state.urls.forEach(url => URL.revokeObjectURL(url));
     state.urls.clear();
     state.photos = [];
@@ -534,20 +534,20 @@
         photo.polaroid = Boolean(photo.polaroid);
         photo.caption = photo.caption || '';
       });
-      if (window.ParisCloud) {
-        await window.ParisCloud.ready;
-        const remotePhotos = await window.ParisCloud.fetchPhotos();
+      if (window.ParisSync?.gallery) {
+        await window.ParisSync.ready;
+        const remotePhotos = await window.ParisSync.gallery.list();
         const remoteIds = new Set(remotePhotos.map(photo => photo.id));
         for (const localPhoto of state.photos.filter(photo => !remoteIds.has(photo.id))) {
           if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(localPhoto.id)) {
-            await window.ParisCloud.uploadPhoto(localPhoto).catch(error => console.warn('Lokales Foto:', error.message));
+            await window.ParisSync.gallery.upload(localPhoto).catch(error => console.warn('Lokales Foto:', error.message));
           }
         }
         for (const remotePhoto of remotePhotos) await put(remotePhoto);
         state.photos = await getAll();
-        window.ParisCloud.subscribePhotos(async () => {
+        await window.ParisSync.gallery.subscribe(async () => {
           try {
-            const fresh = await window.ParisCloud.fetchPhotos();
+            const fresh = await window.ParisSync.gallery.list();
             await clearAll();
             for (const photo of fresh) await put(photo);
             state.urls.forEach(url => URL.revokeObjectURL(url));
