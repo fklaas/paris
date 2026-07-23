@@ -1,4 +1,4 @@
-const CACHE = 'paris-reise-v-day-closure-sync-1';
+const CACHE = 'paris-reise-v-day-closure-polish-2';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
   './ambient.css','./ambient.js','./gallery.css','./reisebuch.css','./reisebuch.js',
@@ -20,7 +20,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  const isAppCode = event.request.mode === 'navigate' || /\.(?:html|js)$/i.test(url.pathname);
+  const isAppCode = event.request.mode === 'navigate' || /\.(?:html|js|css)$/i.test(url.pathname);
 
   if (isAppCode) {
     event.respondWith(
