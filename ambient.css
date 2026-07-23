@@ -1,16 +1,66 @@
-:root{--ambient-glow:rgba(120,83,98,.18)}
-.ambient-toggle{position:fixed;right:18px;bottom:18px;z-index:10020;border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.84);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);box-shadow:0 14px 40px rgba(50,32,40,.18);border-radius:999px;padding:10px 14px;display:flex;gap:9px;align-items:center;font:800 13px/1.1 Inter,system-ui,sans-serif;color:#4b3540;cursor:pointer;transition:.25s ease}
-.ambient-toggle:hover{transform:translateY(-2px)}.ambient-toggle[aria-pressed="true"]{background:#805362;color:white}.ambient-toggle .ambient-dot{width:9px;height:9px;border-radius:50%;background:#b9a7ae;box-shadow:0 0 0 0 rgba(255,255,255,.45)}.ambient-toggle[aria-pressed="true"] .ambient-dot{background:#fff;animation:ambientPulse 1.8s infinite}
-.ambient-panel{position:fixed;right:18px;bottom:72px;z-index:10019;width:min(350px,calc(100vw - 32px));padding:18px;border-radius:24px;background:rgba(255,255,255,.92);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);box-shadow:0 22px 70px rgba(50,32,40,.22);border:1px solid rgba(255,255,255,.8);opacity:0;transform:translateY(12px) scale(.98);pointer-events:none;transition:.25s ease;font-family:Inter,system-ui,sans-serif}.ambient-panel.is-open{opacity:1;transform:none;pointer-events:auto}.ambient-panel h3{margin:0 0 5px;font:900 18px/1.2 Georgia,serif;color:#4b3540}.ambient-panel p{margin:0 0 14px;color:#77656d;font-size:13px;line-height:1.5}.ambient-now{display:flex;align-items:center;gap:12px;padding:12px;border-radius:17px;background:#f7f2f4}.ambient-icon{font-size:27px}.ambient-meta strong{display:block;color:#4b3540}.ambient-meta small{color:#8d7b83}.ambient-volume{margin-top:14px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;color:#6d5962;font-size:12px}.ambient-volume input{width:100%}.ambient-location{margin-top:12px;width:100%;border:0;border-radius:14px;padding:11px 12px;background:#805362;color:#fff;font-weight:800;cursor:pointer}.ambient-location.is-live{background:#e9dfe3;color:#604752}.ambient-scene{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:0;transition:opacity 1.2s ease;overflow:hidden}.ambient-on .ambient-scene{opacity:1}.ambient-scene:before,.ambient-scene:after{content:"";position:absolute;border-radius:50%;filter:blur(2px);opacity:.3;animation:ambientFloat 18s ease-in-out infinite}.ambient-scene:before{width:38vw;height:38vw;left:-12vw;top:10vh;background:radial-gradient(circle,var(--ambient-glow),transparent 70%)}.ambient-scene:after{width:34vw;height:34vw;right:-10vw;bottom:5vh;background:radial-gradient(circle,rgba(226,190,157,.2),transparent 70%);animation-delay:-8s}.ambient-on[data-ambient-time="night"]{--ambient-glow:rgba(73,70,121,.23)}.ambient-on[data-ambient-place="disney"]{--ambient-glow:rgba(226,167,205,.26)}.ambient-on[data-ambient-place="seine"]{--ambient-glow:rgba(104,155,184,.24)}
-@keyframes ambientPulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.45)}70%{box-shadow:0 0 0 8px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}@keyframes ambientFloat{50%{transform:translate(7vw,5vh) scale(1.12)}}
-@media(max-width:600px){.ambient-toggle{right:12px;bottom:12px}.ambient-panel{right:12px;bottom:66px}}
-@media(prefers-reduced-motion:reduce){.ambient-toggle,.ambient-panel,.ambient-scene:before,.ambient-scene:after{animation:none!important;transition:none!important}}
-.cinematic-launch{position:relative;overflow:hidden;border-radius:34px;margin-top:28px;background:linear-gradient(135deg,#241a20,#563b49 58%,#8e6377);color:#fff;box-shadow:0 28px 80px rgba(62,38,50,.22)}.cinematic-launch:before{content:"";position:absolute;inset:-40%;background:radial-gradient(circle at 70% 35%,rgba(255,255,255,.18),transparent 34%),radial-gradient(circle at 20% 80%,rgba(224,177,198,.22),transparent 32%);animation:cinematicGlow 12s ease-in-out infinite alternate}.cinematic-inner{position:relative;z-index:1;display:grid;grid-template-columns:1.25fr .75fr;gap:30px;align-items:center;padding:clamp(30px,5vw,64px)}.cinematic-kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:900;color:#f0dfe7}.cinematic-launch h2{font:900 clamp(38px,6vw,72px)/.98 Georgia,serif;margin:13px 0 18px}.cinematic-launch p{max-width:660px;color:#f1e8ec;line-height:1.7;font-size:16px}.cinematic-button{display:inline-flex;align-items:center;gap:10px;margin-top:12px;background:#fff;color:#3f2b35;text-decoration:none;border-radius:999px;padding:15px 20px;font-weight:900;box-shadow:0 14px 34px rgba(0,0,0,.22);transition:.25s ease}.cinematic-button:hover{transform:translateY(-2px) scale(1.01)}.cinematic-preview{aspect-ratio:4/5;border-radius:28px;background:linear-gradient(160deg,rgba(255,255,255,.23),rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.24);backdrop-filter:blur(12px);display:grid;place-items:center;box-shadow:inset 0 1px rgba(255,255,255,.3),0 22px 50px rgba(0,0,0,.2);transform:rotate(2deg)}.cinematic-preview span{font-size:72px;filter:drop-shadow(0 12px 22px rgba(0,0,0,.3));animation:cinematicFloat 4s ease-in-out infinite}.cinematic-meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:18px;color:#eadde3;font-size:13px}.cinematic-meta b{color:#fff}@keyframes cinematicGlow{to{transform:translate(7%,3%) scale(1.05)}}@keyframes cinematicFloat{50%{transform:translateY(-9px) rotate(-2deg)}}@media(max-width:760px){.cinematic-inner{grid-template-columns:1fr}.cinematic-preview{display:none}.cinematic-launch{border-radius:26px}.cinematic-button{width:100%;justify-content:center}}
-
-.ambient-license{display:block;margin:12px 0 2px;color:rgba(255,255,255,.62);font-size:11px;line-height:1.45}.ambient-panel .ambient-license{font-family:Inter,system-ui,sans-serif}
-
-/* 2026-07-23 · Bedienbarkeit des Atmosphäre-Panels */
-.ambient-panel{z-index:10050!important;pointer-events:none}
-.ambient-panel.is-open{pointer-events:auto!important}
-.ambient-panel.is-open *{pointer-events:auto}
-.ambient-toggle{z-index:10051!important}
+(() => {
+  'use strict';
+  let closureChannel = null;
+  let statsChannel = null;
+  async function context(){ return window.ParisSync.requireReady(); }
+  function mapClosure(row){
+    if(!row) return null;
+    return {
+      day: row.trip_day,
+      best_moment: row.best_moment || '',
+      shared_note: row.shared_note || '',
+      lasting_memory: row.lasting_memory || '',
+      favorite_photo_id: row.favorite_photo_id || null,
+      day_rating: row.day_rating || null,
+      food_rating: row.food_rating || null,
+      field_meta: row.field_meta || {},
+      updated_at: row.updated_at || null
+    };
+  }
+  const api = {
+    async list(){
+      const {client,tripId}=await context();
+      const [{data:closures,error:cErr},{data:stats,error:sErr}] = await Promise.all([
+        client.from('day_closures').select('*').eq('trip_id',tripId).order('trip_day'),
+        client.from('daily_member_stats').select('*').eq('trip_id',tripId).order('trip_day')
+      ]);
+      if(cErr) throw cErr; if(sErr) throw sErr;
+      return {closures:(closures||[]).map(mapClosure),stats:stats||[]};
+    },
+    async saveField(day, field, value, memberName){
+      const {client,tripId,userId}=await context();
+      const now=new Date().toISOString();
+      const existing=await client.from('day_closures').select('field_meta').eq('trip_id',tripId).eq('trip_day',day).maybeSingle();
+      if(existing.error) throw existing.error;
+      const meta={...(existing.data?.field_meta||{}),[field]:{user_id:userId,name:memberName||'Gemeinsam',at:now}};
+      const payload={trip_id:tripId,trip_day:day,updated_by:userId,field_meta:meta,[field]:value===''?null:value};
+      const {data,error}=await client.from('day_closures').upsert(payload,{onConflict:'trip_id,trip_day'}).select('*').single();
+      if(error) throw error;
+      return mapClosure(data);
+    },
+    async saveSteps(day,steps,memberName){
+      const {client,tripId,userId}=await context();
+      const {data,error}=await client.from('daily_member_stats').upsert({trip_id:tripId,trip_day:day,user_id:userId,steps:Number(steps),member_name:memberName||null},{onConflict:'trip_id,trip_day,user_id'}).select('*').single();
+      if(error) throw error; return data;
+    },
+    async photoRows(){
+      const {client,tripId}=await context();
+      const {data,error}=await client.from('gallery_photos').select('id,taken_at,created_at,caption,description,storage_path').eq('trip_id',tripId).order('taken_at');
+      if(error) throw error; return data||[];
+    },
+    async liveRows(){
+      const {client,tripId}=await context();
+      const {data,error}=await client.from('live_moment_status').select('moment_key,collected_at').eq('trip_id',tripId).not('collected_at','is',null);
+      if(error) throw error; return data||[];
+    },
+    async subscribe(callback){
+      const {client,tripId}=await context();
+      if(closureChannel) await client.removeChannel(closureChannel);
+      if(statsChannel) await client.removeChannel(statsChannel);
+      closureChannel=client.channel(`day-closures-${tripId}-${Math.random().toString(36).slice(2)}`).on('postgres_changes',{event:'*',schema:'public',table:'day_closures',filter:`trip_id=eq.${tripId}`},callback).subscribe();
+      statsChannel=client.channel(`day-stats-${tripId}-${Math.random().toString(36).slice(2)}`).on('postgres_changes',{event:'*',schema:'public',table:'daily_member_stats',filter:`trip_id=eq.${tripId}`},callback).subscribe();
+      return async()=>{const a=closureChannel,b=statsChannel;closureChannel=statsChannel=null;if(a)await client.removeChannel(a);if(b)await client.removeChannel(b)};
+    }
+  };
+  window.ParisSync.register('dayClosure',api);
+})();

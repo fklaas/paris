@@ -1,24 +1,181 @@
-(()=>{
- const tracks={
-  home:['🇫🇷','Vorfreude auf Paris','ambient-home'],road:['🚗','Unterwegs nach Paris','ambient-road'],hotel:['🏨','Ruhiger Morgen am Hotel','ambient-hotel'],paris:['🪗','Leichte Pariser Straßenmusik','ambient-paris'],seine:['🌊','An der Seine','ambient-seine'],cafe:['☕','Pariser Café','ambient-cafe'],disney:['🏰','Magische Parkatmosphäre','ambient-disney'],night:['✨','Paris bei Nacht','ambient-night']
- };
- let enabled=localStorage.getItem('paris-ambient-enabled')==='1',current='',position=null;
- const audio=new Audio();audio.loop=true;audio.preload='auto';audio.playsInline=true;
- const stored=Number(localStorage.getItem('paris-ambient-volume'));audio.volume=Number.isFinite(stored)&&stored>=.05?Math.min(stored,.55):.28;
- const $=s=>document.querySelector(s);
- const ext=()=>audio.canPlayType('audio/mpeg')?'mp3':'ogg';
- function distance(a,b,c,d){const R=6371,p=Math.PI/180,x=(c-a)*p,y=(d-b)*p,q=Math.sin(x/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(q))}
- function phase(){const now=new Date(),h=now.getHours(),date=now.toISOString().slice(0,10);let place='home';if(date>='2026-07-31'&&date<='2026-08-02')place='paris';if(date==='2026-07-31'&&h<11)place='road';if(position){const {latitude:la,longitude:lo}=position;if(distance(la,lo,48.8674,2.7836)<7)place='disney';else if(distance(la,lo,48.8584,2.2945)<3.5)place='seine';else if(distance(la,lo,48.7619,2.3046)<4)place='hotel';else if(distance(la,lo,48.8566,2.3522)<22)place=h>=21||h<6?'night':'paris'}else if(place==='paris'&&(h>=21||h<6))place='night';return place}
- function updateLabels(place){const t=tracks[place]||tracks.paris;$('#ambientIcon')&&($('#ambientIcon').textContent=t[0]);$('#ambientTitle')&&($('#ambientTitle').textContent=t[1]);$('#ambientSubtitle')&&($('#ambientSubtitle').textContent=position?'Automatisch nach eurem Standort':'Automatisch nach Reisephase und Tageszeit');document.body.dataset.ambientPlace=place;document.body.dataset.ambientTime=(new Date().getHours()>=20||new Date().getHours()<7)?'night':'day'}
- async function setTrack(place,playAfter=false){const t=tracks[place]||tracks.paris;if(current!==place){current=place;audio.pause();audio.src=`audio/${t[2]}.${ext()}`;audio.load();updateLabels(place)}if(enabled&&playAfter){try{audio.muted=false;if(audio.volume<.05)audio.volume=.28;await audio.play()}catch(err){console.warn('Atmosphäre konnte nicht gestartet werden',err)}}}
- function updateButtons(){document.body.classList.toggle('ambient-on',enabled);document.querySelectorAll('[data-ambient-toggle]').forEach(btn=>{btn.setAttribute('aria-pressed',String(enabled));btn.classList.toggle('is-on',enabled)});const label=$('#ambientToggleLabel');if(label)label.textContent=enabled?'Atmosphäre an':'Atmosphäre aus';const rb=$('#revueSound');if(rb)rb.textContent=enabled?'🔊':'🔇'}
- async function sync(playAfter=false){await setTrack(phase(),playAfter);updateButtons();if(!enabled)audio.pause();localStorage.setItem('paris-ambient-enabled',enabled?'1':'0')}
- async function toggle(){enabled=!enabled;await sync(enabled)}
- function gps(){if(!navigator.geolocation)return;const b=$('#ambientGPS');if(b)b.textContent='Standort wird ermittelt …';navigator.geolocation.watchPosition(p=>{position=p.coords;localStorage.setItem('paris-shared-location-v1',JSON.stringify({latitude:p.coords.latitude,longitude:p.coords.longitude,accuracy:p.coords.accuracy,ts:Date.now()}));if(b){b.textContent='📍 Standort aktiv';b.classList.add('is-live')}sync(enabled)},()=>{if(b)b.textContent='Standort nicht verfügbar'},{enableHighAccuracy:true,maximumAge:60000,timeout:12000})}
- function mountMain(){if($('#ambientToggle'))return;document.body.insertAdjacentHTML('beforeend',`<div class="ambient-scene" aria-hidden="true"></div><div class="ambient-panel" id="ambientPanel"><h3>✨ Atmosphäre</h3><p>Eine sanfte französische Instrumentalbegleitung passt sich Reisephase, Tageszeit und auf Wunsch eurem Standort an.</p><div class="ambient-now"><div class="ambient-icon" id="ambientIcon">🇫🇷</div><div class="ambient-meta"><strong id="ambientTitle">Vorfreude auf Paris</strong><small id="ambientSubtitle">Automatisch angepasst</small></div></div><label class="ambient-volume"><span>Leise</span><input id="ambientVolume" type="range" min="0.05" max="0.55" step="0.01" value="${audio.volume}"><span>Lauter</span></label><small class="ambient-license">🎵 Ruhige Instrumentalmusik ohne Verkehrs- oder Straßengeräusche.</small><button class="ambient-location" id="ambientGPS" type="button">📍 Standort für passende Atmosphäre nutzen</button></div><button class="ambient-toggle" id="ambientToggle" data-ambient-toggle type="button" aria-pressed="false"><span class="ambient-dot"></span><span id="ambientToggleLabel">Atmosphäre aus</span></button>`);const panel=$('#ambientPanel'),button=$('#ambientToggle');button.addEventListener('click',async e=>{e.stopPropagation();await toggle();panel.classList.add('is-open')});$('#ambientVolume').addEventListener('input',e=>{audio.volume=Number(e.target.value);localStorage.setItem('paris-ambient-volume',String(audio.volume));if(enabled&&audio.paused)audio.play().catch(()=>{})});$('#ambientGPS').addEventListener('click',gps);document.addEventListener('click',e=>{if(!panel.contains(e.target)&&!button.contains(e.target))panel.classList.remove('is-open')})}
- function mountRevue(){document.body.classList.add('ambient-revue-mode');const btn=$('#revueSound');if(btn){btn.dataset.ambientToggle='';btn.addEventListener('click',toggle)}}
- try{const saved=JSON.parse(localStorage.getItem('paris-shared-location-v1')||'null');if(saved&&Date.now()-saved.ts<86400000)position=saved}catch{}
- function mount(){document.querySelector('.revue-app')?mountRevue():mountMain();sync(false);setInterval(()=>sync(false),60000)}
- window.ParisAmbient={toggle,play:()=>{enabled=true;return sync(true)},pause:()=>{enabled=false;return sync(false)},isEnabled:()=>enabled};
- document.readyState==='loading'?document.addEventListener('DOMContentLoaded',mount):mount();
+(() => {
+  'use strict';
+
+  const BUCKET = 'paris-gallery';
+  let channel = null;
+  let channelStatus = 'CLOSED';
+
+  function extensionFor(photo) {
+    return (photo.originalName?.split('.').pop() || photo.blob?.type?.split('/').pop() || 'jpg')
+      .replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
+  }
+
+  function rowToPhoto(row, blob) {
+    const taken = row.taken_at || row.created_at;
+    const date = new Date(taken);
+    const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return {
+      id: row.id,
+      blob,
+      storagePath: row.storage_path,
+      originalName: row.original_filename || row.storage_path.split('/').pop(),
+      size: row.file_size ?? blob.size,
+      lastModified: new Date(row.created_at).getTime(),
+      takenAt: taken,
+      dateKey,
+      group: ['2026-07-31', '2026-08-01', '2026-08-02'].includes(dateKey) ? dateKey : 'other',
+      favorite: Boolean(row.is_favorite),
+      polaroid: Boolean(row.is_polaroid),
+      caption: row.description ?? row.caption ?? '',
+      createdAt: row.created_at
+    };
+  }
+
+  async function context() {
+    return window.ParisSync.requireReady();
+  }
+
+  async function downloadRow(client, row) {
+    const file = await client.storage.from(BUCKET).download(row.storage_path);
+    if (file.error) throw file.error;
+    return rowToPhoto(row, file.data);
+  }
+
+  const api = {
+    bucket: BUCKET,
+
+    async listRows() {
+      const { client, tripId } = await context();
+      const { data, error } = await client.from('gallery_photos')
+        .select('*')
+        .eq('trip_id', tripId)
+        .order('taken_at', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+
+    async list() {
+      const { client } = await context();
+      const rows = await this.listRows();
+      const photos = [];
+      for (const row of rows) {
+        try { photos.push(await downloadRow(client, row)); }
+        catch (error) { console.warn(`Cloud-Foto ${row.id} konnte nicht geladen werden:`, error.message); }
+      }
+      return photos;
+    },
+
+    async get(id) {
+      const { client, tripId } = await context();
+      const result = await client.from('gallery_photos').select('*').eq('trip_id', tripId).eq('id', id).maybeSingle();
+      if (result.error) throw result.error;
+      if (!result.data) return null;
+      return downloadRow(client, result.data);
+    },
+
+    async upload(photo) {
+      const { client, tripId, userId } = await context();
+      if (!(photo.blob instanceof Blob)) throw new Error('Das Foto enthält keine gültige Bilddatei.');
+      const path = `${tripId}/${photo.id}.${extensionFor(photo)}`;
+      const upload = await client.storage.from(BUCKET).upload(path, photo.blob, {
+        upsert: true,
+        contentType: photo.blob.type || 'image/jpeg',
+        cacheControl: '3600'
+      });
+      if (upload.error) throw upload.error;
+
+      const record = {
+        id: photo.id,
+        trip_id: tripId,
+        created_by: userId,
+        storage_path: path,
+        original_filename: photo.originalName || null,
+        mime_type: photo.blob.type || null,
+        file_size: photo.blob.size || photo.size || null,
+        caption: photo.caption || '',
+        description: photo.caption || '',
+        is_favorite: Boolean(photo.favorite),
+        is_polaroid: Boolean(photo.polaroid),
+        taken_at: photo.takenAt || new Date().toISOString(),
+        created_at: photo.createdAt || new Date().toISOString()
+      };
+      const saved = await client.from('gallery_photos').upsert(record, { onConflict: 'id' });
+      if (saved.error) {
+        await client.storage.from(BUCKET).remove([path]);
+        throw saved.error;
+      }
+      photo.storagePath = path;
+      return photo;
+    },
+
+    async update(id, patch) {
+      const { client, tripId } = await context();
+      const mapped = {};
+      if ('favorite' in patch) mapped.is_favorite = Boolean(patch.favorite);
+      if ('polaroid' in patch) mapped.is_polaroid = Boolean(patch.polaroid);
+      if ('caption' in patch) {
+        mapped.caption = patch.caption || '';
+        mapped.description = patch.caption || '';
+      }
+      if (!Object.keys(mapped).length) return;
+      const result = await client.from('gallery_photos').update(mapped).eq('trip_id', tripId).eq('id', id);
+      if (result.error) throw result.error;
+    },
+
+    async remove(photo) {
+      const { client, tripId } = await context();
+      let path = photo.storagePath;
+      if (!path) {
+        const lookup = await client.from('gallery_photos').select('storage_path').eq('trip_id', tripId).eq('id', photo.id).maybeSingle();
+        if (lookup.error) throw lookup.error;
+        path = lookup.data?.storage_path;
+      }
+      if (path) {
+        const storageResult = await client.storage.from(BUCKET).remove([path]);
+        if (storageResult.error) throw storageResult.error;
+      }
+      const result = await client.from('gallery_photos').delete().eq('trip_id', tripId).eq('id', photo.id);
+      if (result.error) throw result.error;
+    },
+
+    async clear() {
+      const { client, tripId } = await context();
+      const lookup = await client.from('gallery_photos').select('storage_path').eq('trip_id', tripId);
+      if (lookup.error) throw lookup.error;
+      const paths = (lookup.data || []).map(row => row.storage_path).filter(Boolean);
+      if (paths.length) {
+        const storageResult = await client.storage.from(BUCKET).remove(paths);
+        if (storageResult.error) throw storageResult.error;
+      }
+      const result = await client.from('gallery_photos').delete().eq('trip_id', tripId);
+      if (result.error) throw result.error;
+    },
+
+    async subscribe(callback, statusCallback) {
+      const { client, tripId } = await context();
+      if (channel) await client.removeChannel(channel);
+      channelStatus = 'CONNECTING';
+      const channelName = `paris-sync-gallery-${tripId}-${Math.random().toString(36).slice(2)}`;
+      channel = client.channel(channelName, { config: { broadcast: { self: true } } })
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: 'gallery_photos', filter: `trip_id=eq.${tripId}`
+        }, payload => callback(payload))
+        .subscribe(status => {
+          channelStatus = status;
+          if (statusCallback) statusCallback(status);
+        });
+      return () => {
+        const current = channel;
+        channel = null;
+        channelStatus = 'CLOSED';
+        return current ? client.removeChannel(current) : Promise.resolve();
+      };
+    },
+
+    getRealtimeStatus() {
+      return channelStatus;
+    }
+  };
+
+  window.ParisSync.register('gallery', api);
 })();

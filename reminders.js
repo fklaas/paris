@@ -1,234 +1,110 @@
 (() => {
   'use strict';
 
-  const checklist = document.getElementById('memoryChecklist');
-  const form = document.getElementById('memoryAddForm');
-  const input = document.getElementById('memoryAddInput');
-  const addButton = document.getElementById('memoryAddButton');
-  const progressText = document.getElementById('memoryProgressText');
-  const progressCount = document.getElementById('memoryProgressCount');
-  const progressFill = document.getElementById('memoryProgressFill');
-  if (!checklist || !form || !input || !addButton) return;
+  let channel = null;
+  let channelStatus = 'CLOSED';
 
-  const FIXED_KEYS = Array.from(checklist.querySelectorAll('[data-memory]')).map(el => el.dataset.memory);
-  const statusMap = new Map();
-  const pending = new Map();
-  const writeGuards = new Map();
-  let customRows = [];
-  let refreshRunning = false;
-  let refreshQueued = false;
-  let pollTimer = null;
-
-  const customAccents = ['#ea7899', '#58b3b5', '#a17bd8', '#e7a72d', '#65b69d'];
-  const customIcons = ['♡', '✦', '📍', '📸', '🌷'];
-
-  function keyForCustom(id) { return `custom:${id}`; }
-
-  function guardedValue(key) {
-    const guard = writeGuards.get(key);
-    if (!guard) return null;
-    if (Date.now() > guard.until) { writeGuards.delete(key); return null; }
-    return guard.value;
+  async function context() {
+    return window.ParisSync.requireReady();
   }
 
-  function applyCheckboxState(box, key) {
-    const guarded = guardedValue(key);
-    const value = pending.has(key) ? pending.get(key) : guarded !== null ? guarded : Boolean(statusMap.get(key)?.completed);
-    box.checked = value;
-    box.closest('.memory-check')?.classList.toggle('is-complete', value);
+  function fromRow(row) {
+    return {
+      key: row.moment_key,
+      triggeredAt: row.triggered_at || null,
+      triggeredBy: row.triggered_by || null,
+      seenAt: row.seen_at || null,
+      seenBy: row.seen_by || null,
+      collectedAt: row.collected_at || null,
+      collectedBy: row.collected_by || null,
+      favorite: Boolean(row.is_favorite),
+      linkedPhotoId: row.linked_photo_id || null,
+      updatedAt: row.updated_at || null
+    };
   }
 
-  function updateProgress() {
-    const allKeys = [...FIXED_KEYS, ...customRows.map(row => keyForCustom(row.id))];
-    const done = allKeys.filter(key => {
-      if (pending.has(key)) return pending.get(key);
-      const guarded = guardedValue(key);
-      return guarded !== null ? guarded : Boolean(statusMap.get(key)?.completed);
-    }).length;
-    const total = allKeys.length;
-    const percent = total ? Math.round(done / total * 100) : 0;
-    if (progressCount) progressCount.textContent = `${done} / ${total}`;
-    if (progressFill) progressFill.style.width = `${percent}%`;
-    if (progressText) {
-      progressText.textContent = done === 0 ? 'Noch wartet eure Paris-Liste' :
-        done === total && total ? 'Alle Herzensmomente gesammelt! ♡' :
-        done >= Math.ceil(total / 2) ? 'Eure Paris-Geschichte wächst' : 'Die ersten Erinnerungen sind gesammelt';
+  async function save(key, patch) {
+    const { client, tripId, userId } = await context();
+    const now = new Date().toISOString();
+    const payload = { trip_id: tripId, moment_key: String(key) };
+
+    if (patch.triggered) {
+      payload.triggered_at = patch.triggeredAt || now;
+      payload.triggered_by = userId;
     }
-  }
-
-  async function changeStatus(key, checked, box) {
-    const previous = Boolean(statusMap.get(key)?.completed);
-    pending.set(key, checked);
-    writeGuards.set(key, { value: checked, until: Date.now() + 8000 });
-    applyCheckboxState(box, key);
-    updateProgress();
-    try {
-      const saved = await window.ParisSync.reminders.setCompleted(key, checked);
-      statusMap.set(key, saved);
-      pending.delete(key);
-      writeGuards.set(key, { value: checked, until: Date.now() + 3500 });
-      applyCheckboxState(box, key);
-      updateProgress();
-      setTimeout(() => {
-        const guard = writeGuards.get(key);
-        if (guard && guard.value === checked) {
-          writeGuards.delete(key);
-          refresh();
-        }
-      }, 3600);
-    } catch (error) {
-      console.error('Erinnerung konnte nicht gespeichert werden:', error);
-      pending.delete(key);
-      writeGuards.delete(key);
-      statusMap.set(key, { ...(statusMap.get(key) || { key }), completed: previous });
-      applyCheckboxState(box, key);
-      updateProgress();
+    if (patch.seen) {
+      payload.triggered_at = patch.triggeredAt || patch.seenAt || now;
+      payload.triggered_by = userId;
+      payload.seen_at = patch.seenAt || now;
+      payload.seen_by = userId;
     }
+    if (patch.collected) {
+      payload.triggered_at = patch.triggeredAt || patch.collectedAt || now;
+      payload.triggered_by = userId;
+      payload.seen_at = patch.seenAt || patch.collectedAt || now;
+      payload.seen_by = userId;
+      payload.collected_at = patch.collectedAt || now;
+      payload.collected_by = userId;
+    }
+    if ('favorite' in patch) payload.is_favorite = Boolean(patch.favorite);
+    if ('linkedPhotoId' in patch) payload.linked_photo_id = patch.linkedPhotoId || null;
+
+    const { data, error } = await client.from('live_moment_status')
+      .upsert(payload, { onConflict: 'trip_id,moment_key' })
+      .select('*')
+      .single();
+    if (error) throw error;
+    return fromRow(data);
   }
 
-  function bindFixed() {
-    checklist.querySelectorAll('[data-memory]').forEach(box => {
-      if (box.dataset.syncBound === '1') return;
-      box.dataset.syncBound = '1';
-      box.addEventListener('change', () => changeStatus(box.dataset.memory, box.checked, box));
-    });
-  }
+  const api = {
+    async list() {
+      const { client, tripId } = await context();
+      const { data, error } = await client.from('live_moment_status')
+        .select('*')
+        .eq('trip_id', tripId)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(fromRow);
+    },
 
-  function renderCustom() {
-    checklist.querySelectorAll('.memory-custom-row').forEach(node => node.remove());
-    customRows.forEach((row, index) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'memory-custom-row';
-      wrap.dataset.customId = row.id;
-      const accent = customAccents[index % customAccents.length];
-      const icon = customIcons[index % customIcons.length];
-      const label = document.createElement('label');
-      label.className = 'memory-check';
-      label.style.setProperty('--memory-accent', accent);
-      const iconEl = document.createElement('span');
-      iconEl.className = 'memory-check-icon';
-      iconEl.textContent = icon;
-      const text = document.createElement('span');
-      text.className = 'memory-check-text';
-      text.textContent = row.title;
-      const box = document.createElement('input');
-      box.type = 'checkbox';
-      box.dataset.memory = keyForCustom(row.id);
-      box.setAttribute('aria-label', `${row.title} abhaken`);
-      box.addEventListener('change', () => changeStatus(box.dataset.memory, box.checked, box));
-      label.append(iconEl, text, box);
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'memory-delete';
-      remove.textContent = '×';
-      remove.setAttribute('aria-label', `${row.title} löschen`);
-      remove.addEventListener('click', async event => {
-        event.preventDefault();
-        event.stopPropagation();
-        remove.disabled = true;
-        const oldRows = customRows;
-        customRows = customRows.filter(item => item.id !== row.id);
-        renderCustom();
-        updateProgress();
-        try { await window.ParisSync.reminders.removeCustom(row.id); }
-        catch (error) {
-          console.error('Eigene Erinnerung konnte nicht gelöscht werden:', error);
-          customRows = oldRows;
-          renderCustom();
-          updateProgress();
-        }
-      });
-      wrap.append(label, remove);
-      checklist.appendChild(wrap);
-      applyCheckboxState(box, box.dataset.memory);
-    });
-    bindFixed();
-    checklist.querySelectorAll('[data-memory]').forEach(box => applyCheckboxState(box, box.dataset.memory));
-    updateProgress();
-  }
+    markTriggered(key, at) { return save(key, { triggered: true, triggeredAt: at }); },
+    markSeen(key, at) { return save(key, { seen: true, seenAt: at }); },
+    collect(key, at) { return save(key, { collected: true, collectedAt: at }); },
+    setFavorite(key, favorite) { return save(key, { favorite }); },
+    linkPhoto(key, linkedPhotoId) { return save(key, { linkedPhotoId }); },
 
-  async function migrateLocalOnce(remoteStatuses) {
-    const marker = 'paris-reminders-cloud-migrated-v1';
-    if (localStorage.getItem(marker)) return;
-    localStorage.setItem(marker, '1');
-    if (remoteStatuses.length) return;
-    for (const key of FIXED_KEYS) {
-      let checked = false;
-      try { checked = JSON.parse(localStorage.getItem(`memory-${key}`) || 'false') === true; } catch {}
-      if (checked) {
-        try {
-          const saved = await window.ParisSync.reminders.setCompleted(key, true);
-          statusMap.set(key, saved);
-        } catch (error) { console.warn('Altes Erinnerungshäkchen konnte nicht übernommen werden:', error); }
+    async migrateLegacy(items) {
+      const list = Array.isArray(items) ? items : [];
+      for (const item of list) {
+        const key = item.location || item.momentKey;
+        if (!key) continue;
+        await save(key, { collected: true, collectedAt: item.createdAt || new Date().toISOString() });
       }
-    }
-  }
+    },
 
-  async function refresh() {
-    if (refreshRunning) { refreshQueued = true; return; }
-    refreshRunning = true;
-    try {
-      const [statuses, customs] = await Promise.all([
-        window.ParisSync.reminders.listStatuses(),
-        window.ParisSync.reminders.listCustom()
-      ]);
-      await migrateLocalOnce(statuses);
-      const incoming = new Map(statuses.map(item => [item.key, item]));
-      const allKeys = new Set([...statusMap.keys(), ...incoming.keys()]);
-      allKeys.forEach(key => {
-        const remote = incoming.get(key);
-        const guard = writeGuards.get(key);
-        if (guard && Date.now() <= guard.until) {
-          if (remote && Boolean(remote.completed) === guard.value) {
-            statusMap.set(key, remote);
-            writeGuards.delete(key);
-          } else {
-            statusMap.set(key, { ...(statusMap.get(key) || { key }), completed: guard.value });
-          }
-        } else if (remote) {
-          statusMap.set(key, remote);
-        } else {
-          statusMap.delete(key);
-        }
-      });
-      customRows = customs;
-      renderCustom();
-    } catch (error) {
-      console.error('Erinnerungen konnten nicht synchronisiert werden:', error);
-    } finally {
-      refreshRunning = false;
-      if (refreshQueued) { refreshQueued = false; refresh(); }
-    }
-  }
+    async subscribe(callback, statusCallback) {
+      const { client, tripId } = await context();
+      if (channel) await client.removeChannel(channel);
+      channelStatus = 'CONNECTING';
+      channel = client.channel(`paris-sync-live-moments-${tripId}-${Math.random().toString(36).slice(2)}`)
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: 'live_moment_status', filter: `trip_id=eq.${tripId}`
+        }, payload => callback(payload))
+        .subscribe(status => {
+          channelStatus = status;
+          statusCallback?.(status);
+        });
+      return () => {
+        const current = channel;
+        channel = null;
+        channelStatus = 'CLOSED';
+        return current ? client.removeChannel(current) : Promise.resolve();
+      };
+    },
 
-  form.addEventListener('submit', async event => {
-    event.preventDefault();
-    const title = input.value.trim();
-    if (!title) { input.focus(); return; }
-    addButton.disabled = true;
-    try {
-      const created = await window.ParisSync.reminders.createCustom(title);
-      if (!customRows.some(row => row.id === created.id)) customRows.push(created);
-      input.value = '';
-      renderCustom();
-      input.focus();
-    } catch (error) {
-      console.error('Erinnerung konnte nicht hinzugefügt werden:', error);
-    } finally { addButton.disabled = false; }
-  });
+    getRealtimeStatus() { return channelStatus; }
+  };
 
-  async function init() {
-    bindFixed();
-    await window.ParisSync.ready;
-    await refresh();
-    await window.ParisSync.reminders.subscribe(() => refresh(), status => {
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') setTimeout(refresh, 500);
-    });
-    pollTimer = window.setInterval(() => { if (!document.hidden) refresh(); }, 2000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
-    window.addEventListener('focus', refresh);
-    window.addEventListener('online', refresh);
-  }
-
-  init().catch(error => console.error('Erinnerungsmodul konnte nicht gestartet werden:', error));
+  window.ParisSync.register('liveMoments', api);
 })();
