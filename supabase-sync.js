@@ -214,8 +214,7 @@
     originalSetItem.call(this, key, value);
     if (this !== localStorage || applyingRemote) return;
     key = String(key); value = String(value);
-    if (key === LIVE_KEY) queue(key, () => pushLiveMoments(value));
-    else if (key === NOTES_KEY) queue(key, () => pushNotes(value));
+    if (key === NOTES_KEY) queue(key, () => pushNotes(value));
     else if (isSharedStateKey(key)) queue(key, () => saveAppState(key, value));
   };
 
@@ -228,7 +227,6 @@
 
   function subscribe() {
     client.channel(`paris-trip-${tripId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_moments', filter: `trip_id=eq.${tripId}` }, () => loadLiveMoments().catch(console.warn))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'day_notes', filter: `trip_id=eq.${tripId}` }, () => loadNotes().catch(console.warn))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'favorites', filter: `trip_id=eq.${tripId}` }, () => loadAppState().catch(console.warn))
       .subscribe();
@@ -433,7 +431,7 @@
     try {
       await ensureSession();
       await ensureTrip();
-      await Promise.all([loadLiveMoments(), loadNotes(), loadAppState()]);
+      await Promise.all([loadNotes(), loadAppState()]);
       subscribe();
       document.documentElement.dataset.cloudSync = 'ready';
       document.dispatchEvent(new CustomEvent('paris:cloud-ready', { detail: { tripId } }));
