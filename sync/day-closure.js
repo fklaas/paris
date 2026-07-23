@@ -40,7 +40,7 @@
     },
     async saveSteps(day,steps,memberName){
       const {client,tripId,userId}=await context();
-      const {data,error}=await client.from('daily_member_stats').upsert({trip_id:tripId,trip_day:day,user_id:userId,steps:Number(steps),member_name:memberName||null},{onConflict:'trip_id,trip_day,user_id'}).select('*').single();
+      const {data,error}=await client.from('daily_member_stats').upsert({trip_id:tripId,trip_day:day,user_id:userId,steps:Number(steps),member_name:memberName||null},{onConflict:'trip_id,trip_day,member_name'}).select('*').single();
       if(error) throw error; return data;
     },
     async photoRows(){
