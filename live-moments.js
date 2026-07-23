@@ -4,6 +4,8 @@
   const END = new Date('2026-08-03T00:00:00+02:00');
   const MEMORY_KEY = 'parisLiveMomentsV2';
   const LOC_KEY = 'parisSharedLocationV1';
+  const MODE_KEY = 'parisLiveMomentsModeV1';
+  const TEST_SCENE_KEY = 'parisLiveMomentsTestSceneV1';
   const locations = [
     {id:'hotel',name:'Hôtel de Berny',lat:48.7618,lng:2.3048,radius:650,icon:'🏨',fact:'Euer ruhiger Ausgangspunkt südlich von Paris.',phrase:'Nous avons une réservation au nom de Klaas.',translation:'Wir haben eine Reservierung auf den Namen Klaas.',photo:'Haltet den ersten Ankunftsmoment mit Gepäck und Livi fest.'},
     {id:'eiffel',name:'Eiffelturm',lat:48.85837,lng:2.29448,radius:850,icon:'🗼',fact:'Der schönste Blick öffnet sich vom Trocadéro.',phrase:'Une photo, s’il vous plaît.',translation:'Ein Foto, bitte.',photo:'Für ein ruhiges Familienfoto ein Stück Richtung Trocadéro gehen.'},
@@ -13,13 +15,13 @@
     {id:'disney',name:'Disneyland Paris',lat:48.8722,lng:2.7758,radius:1800,icon:'🏰',fact:'Heute wird aus einem Reisetag ein Familienmärchen.',phrase:'Où est l’espace bébé, s’il vous plaît ?',translation:'Wo ist der Babybereich, bitte?',photo:'Das Schloss leicht seitlich aufnehmen, damit Liv und ihr genug Platz im Bild habt.'}
   ];
   const timelineIds=['hotel','eiffel','louvre','seine','disney'];
-  let watchId=null, activeSince=0, current=null, preview='auto';
+  let watchId=null, activeSince=0, current=null, preview='pretrip', testMode=false;
   const $=s=>document.querySelector(s);
   const els={};
   const distance=(a,b,c,d)=>{const R=6371000,p=x=>x*Math.PI/180,dp=p(c-a),dl=p(d-b),q=Math.sin(dp/2)**2+Math.cos(p(a))*Math.cos(p(c))*Math.sin(dl/2)**2;return 2*R*Math.atan2(Math.sqrt(q),Math.sqrt(1-q));};
   const memories=()=>{try{return JSON.parse(localStorage.getItem(MEMORY_KEY)||'[]')}catch{return[]}};
   function saveMemory(type,title,detail){const all=memories();all.unshift({id:Date.now(),type,title,detail,createdAt:new Date().toISOString(),location:current?.id||null});localStorage.setItem(MEMORY_KEY,JSON.stringify(all.slice(0,80)));document.dispatchEvent(new CustomEvent('paris:memory-added',{detail:all[0]}));}
-  function phase(){const n=new Date();if(preview!=='auto')return preview;if(n<START)return'pretrip';if(n<END)return'trip';return'after';}
+  function phase(){const n=new Date();if(testMode)return preview;if(n<START)return'pretrip';if(n<END)return'trip';return'after';}
   function nearest(lat,lng){let best=null;locations.forEach(l=>{const d=distance(lat,lng,l.lat,l.lng);if(!best||d<best.d)best={...l,d}});return best&&best.d<=best.radius?best:null;}
   function illustration(mode,loc){const icon=loc?.icon||(mode==='pretrip'?'🧳':mode==='drive'?'🚗':mode==='after'?'📖':'✨');return `<svg viewBox="0 0 320 210" aria-hidden="true"><defs><linearGradient id="lmSky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff6df"/><stop offset="1" stop-color="#dff0f2"/></linearGradient></defs><circle cx="160" cy="105" r="92" fill="url(#lmSky)"/><path d="M44 181 Q160 135 278 181" fill="none" stroke="#dcae80" stroke-width="15" stroke-linecap="round"/><path d="M160 43l-30 126m30-126 30 126m-48-46h36m-46 30h56m-66 20h77" stroke="#916b64" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="74" cy="70" r="20" fill="#fff" opacity=".75"/><circle cx="250" cy="82" r="15" fill="#fff" opacity=".75"/><text x="226" y="151" font-size="48">${icon}</text><path d="M65 112c0-14 18-17 24-4 7-13 25-10 25 4 0 15-25 28-25 28S65 127 65 112Z" fill="#ef7890"/></svg>`}
   function setCards(cards){els.grid.innerHTML=cards.map(c=>`<article class="live-moment-card"><div class="live-moment-card-icon">${c.icon}</div><small>${c.label}</small><strong>${c.title}</strong><p>${c.text}</p></article>`).join('');}
@@ -36,6 +38,44 @@
   function startGPS(){if(!navigator.geolocation){alert('Standort ist in diesem Browser nicht verfügbar.');return}if(watchId!==null)return;navigator.geolocation.getCurrentPosition(onPosition,onGeoError,{enableHighAccuracy:true,timeout:12000,maximumAge:20000});watchId=navigator.geolocation.watchPosition(onPosition,onGeoError,{enableHighAccuracy:true,maximumAge:30000,timeout:20000});}
   function onPosition(pos){const {latitude,longitude}=pos.coords;localStorage.setItem(LOC_KEY,JSON.stringify({lat:latitude,lng:longitude,at:Date.now()}));const found=nearest(latitude,longitude);if(found?.id!==current?.id){current=found;activeSince=found?Date.now():0}render()}
   function onGeoError(){els.intro.textContent='Der Standort konnte gerade nicht gelesen werden. Ihr könnt den Live-Modus später erneut aktivieren.'}
-  function init(){Object.assign(els,{section:$('#live-moments'),phase:$('#liveMomentPhase'),eyebrow:$('#liveMomentEyebrow'),title:$('#liveMomentTitle'),intro:$('#liveMomentIntro'),illustration:$('#liveMomentIllustration'),grid:$('#liveMomentGrid'),actions:$('#liveMomentActions'),timeline:$('#liveMomentTimeline'),stay:$('#liveMomentStay'),preview:$('#liveMomentPreview')});if(!els.section)return;els.preview?.addEventListener('change',e=>{preview=e.target.value;current=preview.startsWith('loc:')?locations.find(l=>l.id===preview.slice(4)):null;if(current)current={...current,d:35};activeSince=current?Date.now()-660000:0;render()});render();setInterval(()=>{if(preview==='auto')render()},60000)}
+  function setMode(mode, shouldRender=true){
+    testMode=mode==='test';
+    localStorage.setItem(MODE_KEY,testMode?'test':'auto');
+    els.section?.querySelector('.live-moment-shell')?.classList.toggle('is-test-mode',testMode);
+    els.testScenarios.hidden=!testMode;
+    els.modeRadios.forEach(r=>r.checked=r.value===(testMode?'test':'auto'));
+    if(!testMode){current=null;activeSince=0;}
+    else applyTestScene(preview,false);
+    if(shouldRender)render();
+  }
+  function applyTestScene(value, shouldRender=true){
+    preview=value||'pretrip';
+    localStorage.setItem(TEST_SCENE_KEY,preview);
+    if(els.preview)els.preview.value=preview;
+    current=preview.startsWith('loc:')?locations.find(l=>l.id===preview.slice(4)):null;
+    if(current)current={...current,d:35};
+    activeSince=current?Date.now()-660000:0;
+    if(shouldRender)render();
+  }
+  function closeTools(){els.toolsPanel.hidden=true;els.toolsButton.setAttribute('aria-expanded','false')}
+  function openTools(){els.toolsPanel.hidden=false;els.toolsButton.setAttribute('aria-expanded','true')}
+  function init(){
+    Object.assign(els,{section:$('#live-moments'),phase:$('#liveMomentPhase'),eyebrow:$('#liveMomentEyebrow'),title:$('#liveMomentTitle'),intro:$('#liveMomentIntro'),illustration:$('#liveMomentIllustration'),grid:$('#liveMomentGrid'),actions:$('#liveMomentActions'),timeline:$('#liveMomentTimeline'),stay:$('#liveMomentStay'),preview:$('#liveMomentPreview'),toolsButton:$('#liveMomentToolsButton'),toolsPanel:$('#liveMomentToolsPanel'),toolsClose:$('#liveMomentToolsClose'),testScenarios:$('#liveMomentTestScenarios'),autoReturn:$('#liveMomentAutoReturn'),modeRadios:[...document.querySelectorAll('input[name="liveMomentMode"]')]});
+    if(!els.section)return;
+    preview=localStorage.getItem(TEST_SCENE_KEY)||'pretrip';
+    if(![...els.preview.options].some(o=>o.value===preview))preview='pretrip';
+    testMode=localStorage.getItem(MODE_KEY)==='test';
+    els.preview.value=preview;
+    els.preview.addEventListener('change',e=>applyTestScene(e.target.value));
+    els.modeRadios.forEach(r=>r.addEventListener('change',()=>setMode(r.value)));
+    els.toolsButton.addEventListener('click',()=>els.toolsPanel.hidden?openTools():closeTools());
+    els.toolsClose.addEventListener('click',closeTools);
+    els.autoReturn.addEventListener('click',()=>{setMode('auto');closeTools()});
+    document.addEventListener('click',e=>{if(!els.toolsPanel.hidden&&!e.target.closest('.live-moment-tools'))closeTools()});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTools()});
+    setMode(testMode?'test':'auto',false);
+    render();
+    setInterval(()=>{if(!testMode)render()},60000)
+  }
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init,{once:true}):init();
 })();
