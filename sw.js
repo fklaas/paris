@@ -1,5 +1,5 @@
 
-const CACHE="paris-reise-v-ambient-cinematic-1";
+const CACHE="paris-reise-v-ambient-cinematic-2";
 const ASSETS=["./","./index.html",
   "./ambient.css","./ambient.js","./revue.html","./revue.css","./revue.js",
   "./audio/ambient-home.ogg","./audio/ambient-road.ogg","./audio/ambient-hotel.ogg","./audio/ambient-paris.ogg","./audio/ambient-seine.ogg","./audio/ambient-cafe.ogg","./audio/ambient-disney.ogg","./audio/ambient-night.ogg",
