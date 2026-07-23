@@ -1,8 +1,8 @@
-const CACHE = 'paris-reise-v-live-moments-sync-1';
+const CACHE = 'paris-reise-v-day-closure-sync-1';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
   './ambient.css','./ambient.js','./gallery.css','./reisebuch.css','./reisebuch.js',
-  './live-moments.css','./smart-photo-moments.css','./revue.css'
+  './live-moments.css','./smart-photo-moments.css','./revue.css','./day-closure.css'
 ];
 
 self.addEventListener('install', event => {
