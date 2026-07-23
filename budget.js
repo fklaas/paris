@@ -102,10 +102,15 @@
     if (refreshRunning) { refreshQueued = true; return; }
     refreshRunning = true;
     try {
-      const [cloudRows, cloudLimit] = await Promise.all([
-        window.ParisSync.budget.list(),
-        window.ParisSync.budget.getLimit()
-      ]);
+      const cloudRows = await window.ParisSync.budget.list();
+      let cloudLimit = limitValue;
+      try {
+        cloudLimit = await window.ParisSync.budget.getLimit();
+      } catch (limitError) {
+        // Die Positionen bleiben nutzbar, selbst wenn die neue
+        // budget_settings-Tabelle noch nicht für die Data API freigegeben wurde.
+        console.error('Gesamtbudget konnte nicht aus der Cloud geladen werden:', limitError);
+      }
       const localById = new Map(rows.map(row => [row.id, row]));
       rows = cloudRows.map(row => {
         const local = localById.get(row.id);
