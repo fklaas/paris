@@ -1,4 +1,4 @@
-const CACHE = 'paris-reise-v-gallery-authoritative-1';
+const CACHE = 'paris-reise-v-gallery-dedupe-2';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
   './ambient.css','./ambient.js','./gallery.css','./reisebuch.css','./reisebuch.js',

@@ -449,7 +449,26 @@
     return day;
   }
 
+  function dedupePhotosById() {
+    const unique = new Map();
+    for (const photo of state.photos) unique.set(photo.id, photo);
+    state.photos = [...unique.values()];
+  }
+
+  async function upsertLocalPhoto(photo) {
+    const index = state.photos.findIndex(item => item.id === photo.id);
+    if (index >= 0) {
+      cleanupUrl(photo.id);
+      state.photos[index] = photo;
+    } else {
+      state.photos.push(photo);
+    }
+    dedupePhotosById();
+    await put(photo);
+  }
+
   function render() {
+    dedupePhotosById();
     state.photos.sort((a, b) => new Date(a.takenAt) - new Date(b.takenAt));
     els.empty.hidden = state.photos.length > 0;
     renderHighlights();
@@ -507,8 +526,9 @@
           const fresh = await window.ParisSync.gallery.get(row.id);
           if (fresh) {
             fresh.updatedAt = row.updated_at || row.created_at;
-            state.photos.push(fresh);
-            await put(fresh);
+            // Realtime und der 2-Sekunden-Abgleich können gleichzeitig ankommen.
+            // Deshalb nach dem Download erneut per ID zusammenführen statt blind anzuhängen.
+            await upsertLocalPhoto(fresh);
             changed = true;
           }
           continue;
@@ -657,14 +677,9 @@
               return;
             }
             freshPhoto.updatedAt = payload.new?.updated_at || payload.new?.created_at;
-            const oldIndex = state.photos.findIndex(photo => photo.id === id);
-            if (oldIndex >= 0) {
-              cleanupUrl(id);
-              state.photos[oldIndex] = freshPhoto;
-            } else {
-              state.photos.push(freshPhoto);
-            }
-            await put(freshPhoto);
+            // Derselbe INSERT kann nahezu zeitgleich über Realtime und den
+            // Cloud-Abgleich eintreffen. Immer als Upsert behandeln, nie anhängen.
+            await upsertLocalPhoto(freshPhoto);
             render();
           } catch (error) {
             console.warn('Galerie-Realtime:', error.message);
