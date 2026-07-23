@@ -1,7 +1,7 @@
 const CACHE="paris-reise-v-dynamic-background-1";
 const ASSETS=["./","./index.html","./ambient.css","./ambient.js","./dynamic-background.css","./dynamic-background.js","./revue.html","./revue.css","./revue.js","./audio/ambient-home.ogg","./audio/ambient-home.mp3","./audio/ambient-road.ogg","./audio/ambient-road.mp3","./audio/ambient-hotel.ogg","./audio/ambient-hotel.mp3","./audio/ambient-paris.ogg","./audio/ambient-paris.mp3","./audio/ambient-seine.ogg","./audio/ambient-seine.mp3","./audio/ambient-cafe.ogg","./audio/ambient-cafe.mp3","./audio/ambient-disney.ogg","./audio/ambient-disney.mp3","./audio/ambient-night.ogg","./audio/ambient-night.mp3","./reisebuch.css","./reisebuch.js","./assistant.js","./gallery.css","./gallery.js","./manifest.webmanifest","./icon-192.png","./icon-512.png",
-  './live-moments.css?v=20260723-3',
-  './live-moments.js?v=20260723-3',
+  './live-moments.css?v=20260723-4',
+  './live-moments.js?v=20260723-4',
   './smart-photo-moments.css?v=20260723-1',
   './smart-photo-moments.js?v=20260723-1'];
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));

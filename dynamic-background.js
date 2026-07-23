@@ -5,7 +5,7 @@
  const $=s=>document.querySelector(s);
  let mode=localStorage.getItem(MODE_KEY)||'auto',lastSignature='';
  function mount(){
-   if(!$('.dynamic-background'))document.body.insertAdjacentHTML('afterbegin','<div class="dynamic-background" data-mode="auto" aria-hidden="true"><div class="db-clouds"></div><div class="db-lights"></div><div class="db-stars"></div><div class="db-weather"></div><div class="db-landscape"></div><div class="db-silhouette"></div></div>');
+   if(!$('.dynamic-background'))document.body.insertAdjacentHTML('afterbegin','<div class="dynamic-background" data-mode="auto" aria-hidden="true"><div class="db-clouds"></div><div class="db-ribbons"></div><div class="db-hearts"></div><div class="db-petals"></div><div class="db-lights"></div><div class="db-stars"></div><div class="db-weather"></div><div class="db-landscape"></div><div class="db-silhouette"></div></div>');
    mountSettings();applyMode(mode);render();
    new MutationObserver(render).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','data-ambient-place','data-ambient-time']});
    window.addEventListener('storage',render);document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()});
