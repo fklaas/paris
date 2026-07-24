@@ -17,6 +17,7 @@
     localStorage.setItem('parisDeviceOwner', profile.memberName || '');
     document.documentElement.classList.add('paris-identity-ready');
     document.dispatchEvent(new CustomEvent('paris:identity-ready', { detail: profile }));
+    try { window.ParisTrips?.register?.(profile); } catch {}
   }
 
   function inviteUrl(code) {
