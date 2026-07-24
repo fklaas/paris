@@ -187,6 +187,8 @@
 
   function createShared(client, resolve, back) {
     const existingTrip = localStorage.getItem(LEGACY_TRIP_KEY);
+    const registry = parse(localStorage.getItem('parisTripRegistryV1')) || [];
+    const existingProfile = registry.find(item => item?.tripId === existingTrip) || null;
     const root = setStage(3, `
       <div class="po-slide po-centered"><div><span class="po-kicker">📱 Reise einrichten</span><h1 class="po-title small">Wer richtet eure Reise ein?</h1><p class="po-copy">Der Name wird dauerhaft diesem Gerät zugeordnet. Eure bereits vorhandenen Paris-Daten bleiben bestehen.</p></div><div class="po-form"><div class="po-field"><label>Dein Name</label><input data-name value="Fabian" autocomplete="name"></div><div class="po-error"></div><div class="po-actions"><button class="po-btn secondary" data-back>Zurück</button><button class="po-btn primary" data-go>Gemeinsame Reise erstellen</button></div></div></div>`);
     root.querySelector('[data-back]').onclick = back;
@@ -196,15 +198,24 @@
       loading(event.currentTarget, true);
       try {
         let tripId, joinCode;
-        if (existingTrip) {
-          tripId = existingTrip;
-          joinCode = DEFAULT_CODE;
-          await rpcJoin(client, joinCode, memberName);
+        const reusableCode = String(existingProfile?.joinCode || '').trim().toUpperCase();
+        if (existingTrip && reusableCode) {
+          try {
+            tripId = await rpcJoin(client, reusableCode, memberName);
+            joinCode = reusableCode;
+          } catch (joinError) {
+            // Eine alte lokale Reise-ID kann aus einer früheren Einrichtung stammen,
+            // ohne dass der damalige Einladungscode noch existiert. Dann wird sauber
+            // eine neue Cloud-Reise angelegt, statt fälschlich „Reisecode nicht gefunden“
+            // anzuzeigen und die Einrichtung zu blockieren.
+            joinCode = randomCode();
+            tripId = await rpcCreate(client, existingProfile?.tripName || 'Paris · Unser erster Hochzeitstag', joinCode, memberName);
+          }
         } else {
           joinCode = randomCode();
-          tripId = await rpcCreate(client, 'Paris · Unser erster Hochzeitstag', joinCode, memberName);
+          tripId = await rpcCreate(client, existingProfile?.tripName || 'Paris · Unser erster Hochzeitstag', joinCode, memberName);
         }
-        const profile = { tripId, memberName, role: 'owner', mode: 'shared', joinCode };
+        const profile = { tripId, tripName: existingProfile?.tripName || 'Paris · Unser erster Hochzeitstag', memberName, role: 'owner', mode: 'shared', joinCode };
         store(profile);
         invite(profile, resolve);
       } catch (error) { showError(error); loading(event.currentTarget, false); }

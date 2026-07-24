@@ -6,6 +6,7 @@
   const current=()=>parse(localStorage.getItem(ID_KEY),null);
   const registry=()=>parse(localStorage.getItem(REG_KEY),[]);
   const saveRegistry=v=>localStorage.setItem(REG_KEY,JSON.stringify(v));
+  const randomCode=()=>`PARIS-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36).toUpperCase().slice(0,6)}`;
   function register(profile, extra={}){
     if(!profile?.tripId)return;
     const list=registry(), i=list.findIndex(x=>x.tripId===profile.tripId);
@@ -91,7 +92,31 @@
     for(const t of list){
       const s=t.stats||await stats(t.tripId),empty=Number(s.total??((s.photos||0)+(s.moments||0)+(s.expenses||0)+(s.closures||0)+(s.notes||0)))===0,active=id?.tripId===t.tripId,owner=t.role==='owner'||t.role==='admin';
       const card=document.createElement('article');card.className='pc-card pc-trip';
-      card.innerHTML=`<div><span class="pc-badge ${empty?'pc-test':''}">${active?'Aktiv':empty?'Leere Testreise':'Cloud-Reise'}</span>${t.cloud?'<span class="pc-badge" style="margin-left:6px">☁ Cloud</span>':'<span class="pc-badge pc-test" style="margin-left:6px">Nur auf diesem Gerät</span>'}<div class="pc-title">${esc(t.tripName||'Paris · Unser erster Hochzeitstag')}</div><div class="pc-meta">👤 ${esc(t.memberName)} · ${owner?'Reisebesitzer':'Mitreisend'}<br>👥 ${t.memberCount||1} Teilnehmer · Einladungscode: <span class="pc-code">${esc(t.joinCode||'–')}</span></div><div class="pc-stats"><span class="pc-stat">📷 ${s.photos||0} Fotos</span><span class="pc-stat">✨ ${s.moments||0} Momente</span><span class="pc-stat">💶 ${s.expenses||0} Ausgaben</span><span class="pc-stat">🌙 ${s.closures||0} Abschlüsse</span></div></div><div class="pc-actions">${active?'':'<button class="pc-btn primary" data-activate>Aktiv setzen</button>'}<button class="pc-btn" data-invite>Einladung</button>${owner?'<button class="pc-btn" data-rename>Umbenennen</button>':''}${owner&&empty&&t.cloud?'<button class="pc-btn danger" data-delete>Endgültig löschen</button>':'<button class="pc-btn danger" data-remove>Vom Gerät entfernen</button>'}</div>`;
+      card.innerHTML=`<div><span class="pc-badge ${empty?'pc-test':''}">${active?'Aktiv':empty?'Leere Testreise':'Cloud-Reise'}</span>${t.cloud?'<span class="pc-badge" style="margin-left:6px">☁ Cloud</span>':'<span class="pc-badge pc-test" style="margin-left:6px">Nur auf diesem Gerät</span>'}<div class="pc-title">${esc(t.tripName||'Paris · Unser erster Hochzeitstag')}</div><div class="pc-meta">👤 ${esc(t.memberName)} · ${owner?'Reisebesitzer':'Mitreisend'}<br>👥 ${t.memberCount||1} Teilnehmer · Einladungscode: <span class="pc-code">${esc(t.joinCode||'–')}</span></div><div class="pc-stats"><span class="pc-stat">📷 ${s.photos||0} Fotos</span><span class="pc-stat">✨ ${s.moments||0} Momente</span><span class="pc-stat">💶 ${s.expenses||0} Ausgaben</span><span class="pc-stat">🌙 ${s.closures||0} Abschlüsse</span></div></div><div class="pc-actions">${!t.cloud?'<button class="pc-btn primary" data-cloud>☁ In die Cloud übertragen</button>':''}${active?'':'<button class="pc-btn primary" data-activate>Aktiv setzen</button>'}<button class="pc-btn" data-invite>Einladung</button>${owner&&t.cloud?'<button class="pc-btn" data-rename>Umbenennen</button>':''}${owner&&empty&&t.cloud?'<button class="pc-btn danger" data-delete>Endgültig löschen</button>':'<button class="pc-btn danger" data-remove>Vom Gerät entfernen</button>'}</div>`;
+      card.querySelector('[data-cloud]')?.addEventListener('click',async()=>{
+        const client=window.ParisCloud?.client;
+        if(!client){alert('Die Cloud-Verbindung ist noch nicht bereit. Bitte die Seite kurz neu laden und erneut versuchen.');return}
+        const button=card.querySelector('[data-cloud]');button.disabled=true;button.textContent='Wird übertragen …';
+        try{
+          let tripId=t.tripId,joinCode=String(t.joinCode||'').trim().toUpperCase();
+          let joined=false;
+          if(joinCode){
+            const joinedResult=await client.rpc('join_trip_by_code',{join_code:joinCode,member_name:t.memberName||current()?.memberName||'Mitreisend'});
+            if(!joinedResult.error){tripId=joinedResult.data||tripId;joined=true}
+          }
+          if(!joined){
+            joinCode=randomCode();
+            const created=await client.rpc('create_trip_with_code',{trip_name:t.tripName||'Paris · Unser erster Hochzeitstag',trip_code:joinCode,owner_name:t.memberName||current()?.memberName||'Reisebesitzer'});
+            if(created.error)throw created.error;
+            tripId=created.data;
+          }
+          const next={...t,tripId,joinCode,role:joined?(t.role||'member'):'owner',mode:t.mode||'shared'};delete next.stats;delete next.cloud;
+          const nextRegistry=registry().filter(x=>x.tripId!==t.tripId&&x.tripId!==tripId);nextRegistry.unshift({...next,lastOpenedAt:new Date().toISOString()});saveRegistry(nextRegistry);
+          if(active){localStorage.setItem(ID_KEY,JSON.stringify(next));localStorage.setItem('parisSupabaseTripIdV2',tripId)}
+          alert(joined?'Die Reise wurde mit der vorhandenen Cloud-Reise verbunden.':'Die lokale Reise wurde als neue Cloud-Reise angelegt. Deine lokalen App-Daten bleiben erhalten und werden ab jetzt unter dieser Reise synchronisiert.');
+          location.reload();
+        }catch(error){alert(error?.message||'Die Reise konnte nicht in die Cloud übertragen werden.');button.disabled=false;button.textContent='☁ In die Cloud übertragen'}
+      });
       card.querySelector('[data-activate]')?.addEventListener('click',()=>{const next={...t};delete next.stats;delete next.cloud;localStorage.setItem(ID_KEY,JSON.stringify(next));localStorage.setItem('parisSupabaseTripIdV2',t.tripId);register(next);location.reload()});
       card.querySelector('[data-invite]').onclick=()=>window.ParisOnboarding?.showInvite?.(t);
       card.querySelector('[data-rename]')?.addEventListener('click',async()=>{const n=prompt('Name der Reise',t.tripName||'Paris · Unser erster Hochzeitstag');if(!n?.trim())return;const b=card.querySelector('[data-rename]');b.disabled=true;b.textContent='Wird gespeichert …';try{const r=await window.ParisCloud.client.rpc('paris_rename_trip',{p_trip_id:t.tripId,p_name:n.trim()});if(r.error)throw r.error;t.tripName=r.data||n.trim();saveRegistry(registry().map(x=>x.tripId===t.tripId?{...x,tripName:t.tripName}:x));if(active){const cur=current();localStorage.setItem(ID_KEY,JSON.stringify({...cur,tripName:t.tripName}))}render('trips')}catch(error){alert(error.message||'Die Reise konnte nicht umbenannt werden.');b.disabled=false;b.textContent='Umbenennen'}});
