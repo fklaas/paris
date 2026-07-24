@@ -1,7 +1,7 @@
-const CACHE = 'paris-2026-trip-selector-v1';
+const CACHE = 'paris-2026-people-live-map-v1';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
-  './ambient.css','./ambient.js','./location-service.js','./onboarding.js','./profile-center.js','./gallery.css','./reisebuch.css','./reisebuch.js',
+  './ambient.css','./ambient.js','./location-service.js','./onboarding.js','./people-system.js','./profile-center.js','./gallery.css','./reisebuch.css','./reisebuch.js',
   './live-moments.css','./smart-photo-moments.css','./revue.css','./day-closure.css'
 ];
 

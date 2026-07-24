@@ -223,6 +223,7 @@
     get identity() { return identity; },
     get memberName() { return identity?.memberName || null; },
     get role() { return identity?.role || null; },
+    get userId() { return userId || null; },
     bucket: BUCKET,
 
     async uploadPhoto(photo) {
