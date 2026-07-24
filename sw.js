@@ -1,4 +1,4 @@
-const CACHE = 'paris-2026-auth-foundation-v1';
+const CACHE = 'paris-2026-auth-upgrade-wizard-v2';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
   './ambient.css','./ambient.js','./location-service.js','./auth/config.js','./auth/session.js','./auth/ui.js','./onboarding.js','./supabase-sync.js','./people-system.js','./profile-center.js','./gallery.css','./reisebuch.css','./reisebuch.js',
