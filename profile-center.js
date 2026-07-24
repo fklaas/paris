@@ -91,13 +91,27 @@
       <div class="pc-card" style="margin-top:14px">
         <div class="pc-row"><div><b>📍 Standortfunktionen</b><div class="pc-meta" data-location-copy>${locActive?'Aktiv – Live Moments, Atmosphäre und Reisehinweise nutzen euren Standort.':locBusy?'Standort wird angefragt …':'Einmal aktivieren und alle standortabhängigen Funktionen der App verwenden.'}</div></div><span class="pc-badge ${locActive?'':'pc-test'}" data-location-badge>${locActive?'Aktiv':locBusy?'Wird aktiviert':'Aus'}</span></div>
         <div class="pc-note">Die Freigabe gilt zentral für <b>Live Moments</b>, die automatische <b>Atmosphäre</b>, dynamische Reisehinweise und standortabhängige Darstellungen. Der Standort wird nur auf diesem Gerät verarbeitet.</div>
-        ${locActive?`<div class="pc-row"><div><b>Aktueller Standort</b><div class="pc-meta" data-current-place>${esc(loc.place?.label||'Ort wird ermittelt …')}</div></div><span class="pc-badge">± ${Math.round(loc.position?.accuracy||0)} m</span></div><div class="pc-row"><div><b>Letzte Aktualisierung</b><div class="pc-meta">${loc.position?.ts?new Date(loc.position.ts).toLocaleString('de-DE',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}):'–'}</div></div><button class="pc-btn" data-location-refresh>Neu bestimmen</button></div>`:''}
+        ${locActive?`<div class="pc-row"><div><b>Aktueller Standort</b><div class="pc-meta" data-current-place>${esc(loc.place?.label||'Ort wird ermittelt …')}</div></div><span class="pc-badge" data-current-accuracy>± ${Math.round(loc.position?.accuracy||0)} m</span></div><div class="pc-row"><div><b>Letzte Aktualisierung</b><div class="pc-meta" data-current-updated>${loc.position?.ts?new Date(loc.position.ts).toLocaleString('de-DE',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}):'–'}</div></div><button class="pc-btn" data-location-refresh>Neu bestimmen</button></div>`:''}
         <div class="pc-row"><button class="pc-btn ${locActive?'danger':'primary'}" data-location-toggle>${locActive?'Standort deaktivieren':'📍 Standort jetzt aktivieren'}</button></div>
         <div class="pc-note" data-location-error style="display:${loc.error?'block':'none'};margin-top:12px">${esc(loc.error||'')}</div>
       </div>`;
     const sw=c.querySelector('[data-ambient-switch]');
     sw.onclick=async()=>{await a?.toggle?.();const ns=a?.getState?.()||{};sw.classList.toggle('on',!!ns.enabled);sw.setAttribute('aria-checked',String(!!ns.enabled));c.querySelector('[data-ambient-state]').textContent=ns.enabled?'Aktiv · '+(ns.title||'passend zur Reisephase'):'Ausgeschaltet'};
     c.querySelector('[data-ambient-volume]').oninput=e=>a?.setVolume?.(Number(e.target.value));
+    const applyCurrentLocation=()=>{
+      const latest=window.ParisLocation?.getState?.();
+      if(!latest?.position)return;
+      const placeNode=c.querySelector('[data-current-place]');
+      const accuracyNode=c.querySelector('[data-current-accuracy]');
+      const updatedNode=c.querySelector('[data-current-updated]');
+      if(placeNode)placeNode.textContent=latest.place?.label||`${latest.position.latitude.toFixed(5)}, ${latest.position.longitude.toFixed(5)}`;
+      if(accuracyNode)accuracyNode.textContent=`± ${Math.round(latest.position.accuracy||0)} m`;
+      if(updatedNode)updatedNode.textContent=latest.position.ts?new Date(latest.position.ts).toLocaleString('de-DE',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}):'–';
+    };
+    applyCurrentLocation();
+    if(locActive&&loc.position&&!loc.place){
+      window.ParisLocation?.refreshPlace?.().then(applyCurrentLocation).catch(applyCurrentLocation);
+    }
     c.querySelector('[data-location-refresh]')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;b.textContent='Wird bestimmt …';try{await window.ParisLocation?.refreshPlace?.();render('ambient')}catch{b.disabled=false;b.textContent='Erneut versuchen'}});
     c.querySelector('[data-location-toggle]').onclick=async e=>{
       const button=e.currentTarget, service=window.ParisLocation;
