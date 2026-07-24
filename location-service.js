@@ -56,10 +56,18 @@
     );
   }
   async function enable(){
+    if(state.status==='active'&&state.position)return state.position;
     if(requestPromise)return requestPromise;
     requestPromise=(async()=>{
       if(!window.isSecureContext){const err={code:0};state={...state,status:'error',error:'Standort ist nur über eine sichere HTTPS-Verbindung verfügbar.'};emit();throw err}
       if(!navigator.geolocation){const err={code:0};state={...state,status:'error',error:'Dieser Browser stellt keine Standortfunktion bereit.'};emit();throw err}
+      const permission=await permissionState();
+      if(permission==='denied'){
+        localStorage.removeItem(PREF_KEY);
+        state={...state,enabled:false,status:'denied',error:`Standort ist für diese Website bereits blockiert. ${browserName()==='Safari'?'Öffne die Website-Einstellungen in Safari und stelle Standort auf „Erlauben“.':'Klicke links neben der Adresse auf das Website-Symbol und stelle Standort auf „Zulassen“. Danach die Seite neu laden.'}`};
+        emit();
+        throw Object.assign(new Error('Geolocation permission denied'),{code:1});
+      }
       state={...state,enabled:true,status:'requesting',error:null};
       localStorage.setItem(PREF_KEY,'1');emit();
       try{

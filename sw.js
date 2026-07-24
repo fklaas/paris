@@ -1,4 +1,4 @@
-const CACHE = 'paris-location-central-v2';
+const CACHE = 'paris-v20260724-location-loop-fix';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
   './ambient.css','./ambient.js','./location-service.js','./onboarding.js','./profile-center.js','./gallery.css','./reisebuch.css','./reisebuch.js',

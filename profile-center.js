@@ -77,7 +77,7 @@
       const before=service.getState();
       if(before.enabled&&before.status==='active'){service.disable();render('ambient');return}
       button.disabled=true;button.textContent='Standort wird angefragt …';
-      try{await service.enable();await a?.useLocation?.();window.ParisLiveMoments?.enableLocation?.();render('ambient')}
+      try{await service.enable();render('ambient')}
       catch(error){const ns=service.getState();button.disabled=false;button.textContent='Erneut versuchen';const err=c.querySelector('[data-location-error]');err.style.display='block';err.textContent=ns.error||'Standort konnte nicht aktiviert werden. Prüfe die Standortberechtigung dieser Website im verwendeten Browser.'}
     };
   }
