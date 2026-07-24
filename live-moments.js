@@ -63,8 +63,9 @@
     if(remember&&current&&cloudStates.get(current.id)?.collectedAt){remember.textContent='✓ Moment gemeinsam gespeichert';remember.disabled=true}
     remember?.addEventListener('click',async()=>{remember.disabled=true;remember.textContent='Moment wird gespeichert …';const ok=await saveMemory('place',current.name,current.fact);remember.textContent=ok?'✓ Moment gemeinsam gespeichert':'Noch einmal versuchen';remember.disabled=ok});
   }
-  function startGPS(){if(!navigator.geolocation){alert('Standort ist in diesem Browser nicht verfügbar.');return}if(watchId!==null)return;navigator.geolocation.getCurrentPosition(onPosition,onGeoError,{enableHighAccuracy:true,timeout:12000,maximumAge:20000});watchId=navigator.geolocation.watchPosition(onPosition,onGeoError,{enableHighAccuracy:true,maximumAge:30000,timeout:20000});}
-  function onPosition(pos){const {latitude,longitude}=pos.coords;localStorage.setItem(LOC_KEY,JSON.stringify({lat:latitude,lng:longitude,at:Date.now()}));const found=nearest(latitude,longitude);if(found?.id!==current?.id){current=found;activeSince=found?Date.now():0;if(found)markDetected(found)}render()}
+  async function startGPS(){if(window.ParisLocation){try{const p=await window.ParisLocation.enable();onCoordinates(p)}catch{onGeoError()}return}if(!navigator.geolocation){alert('Standort ist in diesem Browser nicht verfügbar.');return}if(watchId!==null)return;navigator.geolocation.getCurrentPosition(onPosition,onGeoError,{enableHighAccuracy:true,timeout:12000,maximumAge:20000});watchId=navigator.geolocation.watchPosition(onPosition,onGeoError,{enableHighAccuracy:true,maximumAge:30000,timeout:20000});}
+  function onCoordinates(coords){if(!coords)return;const {latitude,longitude}=coords;localStorage.setItem(LOC_KEY,JSON.stringify({lat:latitude,lng:longitude,at:Date.now()}));const found=nearest(latitude,longitude);if(found?.id!==current?.id){current=found;activeSince=found?Date.now():0;if(found)markDetected(found)}render()}
+  function onPosition(pos){onCoordinates(pos.coords)}
   function onGeoError(){els.intro.textContent='Der Standort konnte gerade nicht gelesen werden. Ihr könnt den Live-Modus später erneut aktivieren.'}
   function setMode(mode, shouldRender=true){
     testMode=mode==='test';
@@ -103,6 +104,7 @@
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTools()});
     setMode(testMode?'test':'auto',false);
     document.addEventListener('paris:cloud-updated',e=>{if(e.detail?.key===MEMORY_KEY)render()});
+    window.addEventListener('paris:location-state',e=>{if(e.detail?.position)onCoordinates(e.detail.position)});
     render();
     (async()=>{
       try{
@@ -118,5 +120,6 @@
     })();
     setInterval(()=>{if(!testMode)render()},60000)
   }
+  window.ParisLiveMoments={enableLocation:startGPS,getLocationState:()=>window.ParisLocation?.getState?.()||null};
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init,{once:true}):init();
 })();

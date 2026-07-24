@@ -1,7 +1,7 @@
-const CACHE = 'paris-profile-mobile-redesign-v1';
+const CACHE = 'paris-location-central-v1';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
-  './ambient.css','./ambient.js','./onboarding.js','./profile-center.js','./gallery.css','./reisebuch.css','./reisebuch.js',
+  './ambient.css','./ambient.js','./location-service.js','./onboarding.js','./profile-center.js','./gallery.css','./reisebuch.css','./reisebuch.js',
   './live-moments.css','./smart-photo-moments.css','./revue.css','./day-closure.css'
 ];
 
