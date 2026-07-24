@@ -1,11 +1,15 @@
 (() => {
   'use strict';
-  const ID_KEY='parisIdentityV1', REG_KEY='parisTripRegistryV1', DEV_KEY='parisDeveloperModeV1';
+  const ID_KEY='parisIdentityV1', REG_KEY='parisTripRegistryV1', HIDDEN_KEY='parisHiddenCloudTripsV1', DEV_KEY='parisDeveloperModeV1';
   const parse=(v,f)=>{try{return v?JSON.parse(v):f}catch{return f}};
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const current=()=>parse(localStorage.getItem(ID_KEY),null);
   const registry=()=>parse(localStorage.getItem(REG_KEY),[]);
   const saveRegistry=v=>localStorage.setItem(REG_KEY,JSON.stringify(v));
+  const hiddenTrips=()=>parse(localStorage.getItem(HIDDEN_KEY),[]);
+  const saveHiddenTrips=v=>localStorage.setItem(HIDDEN_KEY,JSON.stringify([...new Set(v)]));
+  const hideTrip=id=>saveHiddenTrips([...hiddenTrips(),id]);
+  const unhideTrip=id=>saveHiddenTrips(hiddenTrips().filter(x=>x!==id));
   const randomCode=()=>`PARIS-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36).toUpperCase().slice(0,6)}`;
   function register(profile, extra={}){
     if(!profile?.tripId)return;
@@ -74,25 +78,29 @@
   }
   async function stats(tripId){const c=window.ParisCloud?.client;if(!c)return{};const tables=[['gallery_photos','photos'],['live_moments','moments'],['budget_entries','expenses'],['day_closures','closures']];const out={};await Promise.all(tables.map(async([t,k])=>{try{const r=await c.from(t).select('*',{count:'exact',head:true}).eq('trip_id',tripId);out[k]=r.count||0}catch{out[k]=0}}));return out}
   function normalizeCloudTrip(row){
-    return {tripId:row.trip_id,tripName:row.trip_name||'Paris · Unser erster Hochzeitstag',joinCode:row.join_code||'',memberName:row.member_name||current()?.memberName||'Mitreisend',role:row.member_role||'member',mode:'shared',createdAt:row.created_at,memberCount:Number(row.member_count||1),stats:{photos:Number(row.photos||0),moments:Number(row.moments||0),expenses:Number(row.expenses||0),closures:Number(row.closures||0),notes:Number(row.notes||0),total:Number(row.total_content||0)},cloud:true};
+    return {tripId:row.trip_id,tripName:row.trip_name||'Paris · Unser erster Hochzeitstag',joinCode:row.join_code||'',memberName:row.member_name||current()?.memberName||'Mitreisend',role:(row.is_owner?'owner':(row.member_role||'member')),isOwner:Boolean(row.is_owner),mode:'shared',createdAt:row.created_at,memberCount:Number(row.member_count||1),stats:{photos:Number(row.photos||0),moments:Number(row.moments||0),expenses:Number(row.expenses||0),closures:Number(row.closures||0),notes:Number(row.notes||0),total:Number(row.total_content||0)},cloud:true};
   }
   async function cloudTrips(){
     const client=window.ParisCloud?.client;if(!client)return null;
     try{await window.ParisCloud.ready;const r=await client.rpc('paris_list_my_trips');if(r.error)throw r.error;return (r.data||[]).map(normalizeCloudTrip)}catch(error){console.warn('Cloud-Reiseübersicht:',error.message);return null}
   }
   function mergeTrips(cloud,local){
-    const map=new Map();for(const t of local||[])if(t?.tripId)map.set(t.tripId,{...t,stats:null,cloud:false});for(const t of cloud||[])map.set(t.tripId,{...(map.get(t.tripId)||{}),...t});return [...map.values()]
+    const hidden=new Set(hiddenTrips());
+    const map=new Map();
+    for(const t of local||[])if(t?.tripId&&!hidden.has(t.tripId))map.set(t.tripId,{...t,stats:null,cloud:false});
+    for(const t of cloud||[])if(t?.tripId&&!hidden.has(t.tripId))map.set(t.tripId,{...(map.get(t.tripId)||{}),...t});
+    return [...map.values()]
   }
   async function render(tab='trips'){const o=shell(),c=o.querySelector('[data-content]'),id=current();if(tab==='trips'){
     c.innerHTML=`<div class="pc-head"><div><h2>Meine Reisen</h2><p>Alle Reisen dieser Anmeldung aus der Cloud verwalten.</p></div><button class="pc-btn primary" data-new>＋ Neue Reise</button></div><div class="pc-note" style="margin-bottom:14px">Cloud-Reisen werden über deine anonyme Anmeldung zugeordnet. Geschlossene Inkognito-Sitzungen besitzen eine andere Anmeldung und erscheinen deshalb nicht hier.</div><div class="pc-grid" data-list><div class="pc-empty">Cloud-Reisen werden geladen …</div></div>`;
-    c.querySelector('[data-new]').onclick=()=>{if(confirm('Neue Reise einrichten? Die aktuelle Reise bleibt in deiner Übersicht gespeichert.')){localStorage.removeItem(ID_KEY);location.reload()}};
+    c.querySelector('[data-new]').onclick=()=>{if(confirm('Neue Reise einrichten? Die aktuelle Reise bleibt in deiner Übersicht gespeichert.')){localStorage.setItem('parisForceNewTripV1','1');localStorage.removeItem(ID_KEY);localStorage.removeItem('parisSupabaseTripIdV2');location.reload()}};
     const remote=await cloudTrips(),list=mergeTrips(remote,registry()),box=c.querySelector('[data-list]');
     if(!list.length){box.innerHTML='<div class="pc-empty">Für diese Anmeldung wurden noch keine Reisen gefunden.</div>';return}
     box.innerHTML='';
     for(const t of list){
-      const s=t.stats||await stats(t.tripId),empty=Number(s.total??((s.photos||0)+(s.moments||0)+(s.expenses||0)+(s.closures||0)+(s.notes||0)))===0,active=id?.tripId===t.tripId,owner=t.role==='owner'||t.role==='admin';
+      const s=t.stats||await stats(t.tripId),empty=Number(s.total??((s.photos||0)+(s.moments||0)+(s.expenses||0)+(s.closures||0)+(s.notes||0)))===0,active=id?.tripId===t.tripId,owner=t.isOwner===true||t.role==='owner'||t.role==='admin';
       const card=document.createElement('article');card.className='pc-card pc-trip';
-      card.innerHTML=`<div><span class="pc-badge ${empty?'pc-test':''}">${active?'Aktiv':empty?'Leere Testreise':'Cloud-Reise'}</span>${t.cloud?'<span class="pc-badge" style="margin-left:6px">☁ Cloud</span>':'<span class="pc-badge pc-test" style="margin-left:6px">Nur auf diesem Gerät</span>'}<div class="pc-title">${esc(t.tripName||'Paris · Unser erster Hochzeitstag')}</div><div class="pc-meta">👤 ${esc(t.memberName)} · ${owner?'Reisebesitzer':'Mitreisend'}<br>👥 ${t.memberCount||1} Teilnehmer · Einladungscode: <span class="pc-code">${esc(t.joinCode||'–')}</span></div><div class="pc-stats"><span class="pc-stat">📷 ${s.photos||0} Fotos</span><span class="pc-stat">✨ ${s.moments||0} Momente</span><span class="pc-stat">💶 ${s.expenses||0} Ausgaben</span><span class="pc-stat">🌙 ${s.closures||0} Abschlüsse</span></div></div><div class="pc-actions">${!t.cloud?'<button class="pc-btn primary" data-cloud>☁ In die Cloud übertragen</button>':''}${active?'':'<button class="pc-btn primary" data-activate>Aktiv setzen</button>'}<button class="pc-btn" data-invite>Einladung</button>${owner&&t.cloud?'<button class="pc-btn" data-rename>Umbenennen</button>':''}${owner&&empty&&t.cloud?'<button class="pc-btn danger" data-delete>Endgültig löschen</button>':'<button class="pc-btn danger" data-remove>Vom Gerät entfernen</button>'}</div>`;
+      card.innerHTML=`<div><span class="pc-badge ${empty?'pc-test':''}">${active?'Aktiv':empty?'Leere Testreise':'Cloud-Reise'}</span>${t.cloud?'<span class="pc-badge" style="margin-left:6px">☁ Cloud</span>':'<span class="pc-badge pc-test" style="margin-left:6px">Nur auf diesem Gerät</span>'}<div class="pc-title">${esc(t.tripName||'Paris · Unser erster Hochzeitstag')}</div><div class="pc-meta">👤 ${esc(t.memberName)} · ${owner?'Reisebesitzer':'Mitreisend'}<br>👥 ${t.memberCount||1} Teilnehmer · Einladungscode: <span class="pc-code">${esc(t.joinCode||'–')}</span></div><div class="pc-stats"><span class="pc-stat">📷 ${s.photos||0} Fotos</span><span class="pc-stat">✨ ${s.moments||0} Momente</span><span class="pc-stat">💶 ${s.expenses||0} Ausgaben</span><span class="pc-stat">🌙 ${s.closures||0} Abschlüsse</span></div></div><div class="pc-actions">${!t.cloud?'<button class="pc-btn primary" data-cloud>☁ In die Cloud übertragen</button>':''}${active?'':'<button class="pc-btn primary" data-activate>Aktiv setzen</button>'}<button class="pc-btn" data-invite>Einladung</button>${owner&&t.cloud?'<button class="pc-btn" data-rename>Umbenennen</button>':''}${owner&&empty&&t.cloud?'<button class="pc-btn danger" data-delete>Endgültig löschen</button>':'<button class="pc-btn danger" data-remove>Auf Gerät ausblenden</button>'}</div>`;
       card.querySelector('[data-cloud]')?.addEventListener('click',async()=>{
         const client=window.ParisCloud?.client;
         if(!client){alert('Die Cloud-Verbindung ist noch nicht bereit. Bitte die Seite kurz neu laden und erneut versuchen.');return}
@@ -117,11 +125,11 @@
           location.reload();
         }catch(error){alert(error?.message||'Die Reise konnte nicht in die Cloud übertragen werden.');button.disabled=false;button.textContent='☁ In die Cloud übertragen'}
       });
-      card.querySelector('[data-activate]')?.addEventListener('click',()=>{const next={...t};delete next.stats;delete next.cloud;localStorage.setItem(ID_KEY,JSON.stringify(next));localStorage.setItem('parisSupabaseTripIdV2',t.tripId);register(next);location.reload()});
+      card.querySelector('[data-activate]')?.addEventListener('click',()=>{const next={...t};delete next.stats;delete next.cloud;delete next.isOwner;unhideTrip(t.tripId);localStorage.setItem(ID_KEY,JSON.stringify(next));localStorage.setItem('parisSupabaseTripIdV2',t.tripId);register(next);location.reload()});
       card.querySelector('[data-invite]').onclick=()=>window.ParisOnboarding?.showInvite?.(t);
       card.querySelector('[data-rename]')?.addEventListener('click',async()=>{const n=prompt('Name der Reise',t.tripName||'Paris · Unser erster Hochzeitstag');if(!n?.trim())return;const b=card.querySelector('[data-rename]');b.disabled=true;b.textContent='Wird gespeichert …';try{const r=await window.ParisCloud.client.rpc('paris_rename_trip',{p_trip_id:t.tripId,p_name:n.trim()});if(r.error)throw r.error;t.tripName=r.data||n.trim();saveRegistry(registry().map(x=>x.tripId===t.tripId?{...x,tripName:t.tripName}:x));if(active){const cur=current();localStorage.setItem(ID_KEY,JSON.stringify({...cur,tripName:t.tripName}))}render('trips')}catch(error){alert(error.message||'Die Reise konnte nicht umbenannt werden.');b.disabled=false;b.textContent='Umbenennen'}});
-      card.querySelector('[data-delete]')?.addEventListener('click',async()=>{if(!confirm(`„${t.tripName}“ ist leer. Diese Cloud-Reise wirklich endgültig löschen?\n\nDieser Schritt kann nicht rückgängig gemacht werden.`))return;const typed=prompt('Zur Bestätigung bitte LÖSCHEN eingeben:');if(typed!=='LÖSCHEN')return;try{const r=await window.ParisCloud.client.rpc('paris_delete_empty_trip',{p_trip_id:t.tripId});if(r.error)throw r.error;saveRegistry(registry().filter(x=>x.tripId!==t.tripId));if(active){localStorage.removeItem(ID_KEY);localStorage.removeItem('parisSupabaseTripIdV2');location.reload()}else render('trips')}catch(error){alert(error.message||'Die Reise konnte nicht gelöscht werden.')}});
-      card.querySelector('[data-remove]')?.addEventListener('click',()=>{if(!confirm('Diese Reise nur von diesem Gerät entfernen? Cloud-Daten bleiben erhalten.'))return;saveRegistry(registry().filter(x=>x.tripId!==t.tripId));if(active){localStorage.removeItem(ID_KEY);localStorage.removeItem('parisSupabaseTripIdV2');location.reload()}else render('trips')});
+      card.querySelector('[data-delete]')?.addEventListener('click',async()=>{if(!confirm(`„${t.tripName}“ ist leer. Diese Cloud-Reise wirklich endgültig löschen?\n\nDieser Schritt kann nicht rückgängig gemacht werden.`))return;const typed=prompt('Zur Bestätigung bitte LÖSCHEN eingeben:');if(typed!=='LÖSCHEN')return;try{const r=await window.ParisCloud.client.rpc('paris_delete_empty_trip',{p_trip_id:t.tripId});if(r.error)throw r.error;saveRegistry(registry().filter(x=>x.tripId!==t.tripId));hideTrip(t.tripId);if(active){localStorage.removeItem(ID_KEY);localStorage.removeItem('parisSupabaseTripIdV2');location.reload()}else render('trips')}catch(error){alert(error.message||'Die Reise konnte nicht gelöscht werden.')}});
+      card.querySelector('[data-remove]')?.addEventListener('click',()=>{if(!confirm('Diese Reise auf diesem Gerät ausblenden? Die Cloud-Daten bleiben erhalten und die Reise wird nicht automatisch wieder eingeblendet.'))return;saveRegistry(registry().filter(x=>x.tripId!==t.tripId));hideTrip(t.tripId);if(active){localStorage.removeItem(ID_KEY);localStorage.removeItem('parisSupabaseTripIdV2');location.reload()}else render('trips')});
       box.appendChild(card)
     }
     if(remote===null){const note=document.createElement('div');note.className='pc-note';note.innerHTML='Die Cloud-Verwaltungsfunktionen sind noch nicht eingerichtet. Führe <b>PARIS-CLOUD-TRAVEL-MANAGEMENT.sql</b> einmal im Supabase SQL Editor aus.';box.prepend(note)}

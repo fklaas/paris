@@ -1,4 +1,4 @@
-const CACHE = 'paris-2026-location-place-v2-initial';
+const CACHE = 'paris-2026-cloud-trip-delete-v1';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
   './ambient.css','./ambient.js','./location-service.js','./onboarding.js','./profile-center.js','./gallery.css','./reisebuch.css','./reisebuch.js',

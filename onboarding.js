@@ -14,6 +14,8 @@
 
   function store(profile) {
     localStorage.setItem(KEY, JSON.stringify(profile));
+    localStorage.setItem(LEGACY_TRIP_KEY, profile.tripId || '');
+    localStorage.removeItem('parisForceNewTripV1');
     localStorage.setItem('parisDeviceOwner', profile.memberName || '');
     document.documentElement.classList.add('paris-identity-ready');
     document.dispatchEvent(new CustomEvent('paris:identity-ready', { detail: profile }));
@@ -186,9 +188,10 @@
   }
 
   function createShared(client, resolve, back) {
-    const existingTrip = localStorage.getItem(LEGACY_TRIP_KEY);
+    const forceNew = localStorage.getItem('parisForceNewTripV1') === '1';
+    const existingTrip = forceNew ? null : localStorage.getItem(LEGACY_TRIP_KEY);
     const registry = parse(localStorage.getItem('parisTripRegistryV1')) || [];
-    const existingProfile = registry.find(item => item?.tripId === existingTrip) || null;
+    const existingProfile = forceNew ? null : (registry.find(item => item?.tripId === existingTrip) || null);
     const root = setStage(3, `
       <div class="po-slide po-centered"><div><span class="po-kicker">📱 Reise einrichten</span><h1 class="po-title small">Wer richtet eure Reise ein?</h1><p class="po-copy">Der Name wird dauerhaft diesem Gerät zugeordnet. Eure bereits vorhandenen Paris-Daten bleiben bestehen.</p></div><div class="po-form"><div class="po-field"><label>Dein Name</label><input data-name value="Fabian" autocomplete="name"></div><div class="po-error"></div><div class="po-actions"><button class="po-btn secondary" data-back>Zurück</button><button class="po-btn primary" data-go>Gemeinsame Reise erstellen</button></div></div></div>`);
     root.querySelector('[data-back]').onclick = back;

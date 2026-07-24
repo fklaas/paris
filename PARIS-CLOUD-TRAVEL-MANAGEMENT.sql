@@ -35,6 +35,8 @@ as $$
   );
 $$;
 
+drop function if exists public.paris_list_my_trips();
+
 create or replace function public.paris_list_my_trips()
 returns table (
   trip_id uuid,
@@ -49,7 +51,8 @@ returns table (
   expenses bigint,
   closures bigint,
   notes bigint,
-  total_content bigint
+  total_content bigint,
+  is_owner boolean
 )
 language sql
 stable
@@ -82,7 +85,8 @@ as $$
       + (select count(*) from public.budget_entries x where x.trip_id = t.id)
       + (select count(*) from public.day_closures x where x.trip_id = t.id)
       + (select count(*) from public.day_notes x where x.trip_id = t.id)
-      + (select count(*) from public.favorites x where x.trip_id = t.id)
+      + (select count(*) from public.favorites x where x.trip_id = t.id),
+    public.paris_is_trip_owner(t.id)
   from memberships m
   join public.trips t on t.id = m.trip_id
   left join public.trip_settings s on s.trip_id = t.id
@@ -139,6 +143,8 @@ begin
     raise exception 'Diese Reise enthält noch % Einträge und wurde aus Sicherheitsgründen nicht gelöscht.', v_total;
   end if;
 
+  delete from public.trip_settings where trip_id = p_trip_id;
+  delete from public.trip_members tm where (to_jsonb(tm)->>'trip_id')::uuid = p_trip_id;
   delete from public.trips where id = p_trip_id;
   return jsonb_build_object('deleted', true, 'trip_id', p_trip_id);
 end;
