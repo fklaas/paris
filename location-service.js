@@ -3,9 +3,10 @@
   const PREF_KEY='parisLocationEnabledV1';
   const SHARED_KEY='paris-shared-location-v1';
   const LIVE_KEY='parisSharedLocationV1';
+  const PLACE_KEY='parisLocationPlaceV1';
   let watchId=null;
   let requestPromise=null;
-  let state={enabled:localStorage.getItem(PREF_KEY)==='1',status:'idle',position:null,error:null};
+  let state={enabled:localStorage.getItem(PREF_KEY)==='1',status:'idle',position:null,place:null,error:null};
 
   const emit=()=>{
     window.dispatchEvent(new CustomEvent('paris:location-state',{detail:{...state}}));
@@ -19,6 +20,49 @@
     if(/Edg|EdgiOS/i.test(ua))return'Edge';
     return'Browser';
   }
+
+  function placeLabel(data){
+    if(!data)return null;
+    const locality=data.locality||data.city||data.principalSubdivision||'';
+    const district=data.localityInfo?.administrative?.find?.(x=>x.adminLevel===8)?.name||'';
+    const region=data.principalSubdivision||'';
+    const country=data.countryName||'';
+    const parts=[];
+    for(const value of [locality||district, region, country]){
+      const clean=String(value||'').trim();
+      if(clean&&!parts.includes(clean))parts.push(clean);
+    }
+    return parts.join(', ')||null;
+  }
+  async function resolvePlace(position, force=false){
+    if(!position)return null;
+    try{
+      const cached=JSON.parse(localStorage.getItem(PLACE_KEY)||'null');
+      const close=cached&&Math.abs((cached.latitude||0)-position.latitude)<0.002&&Math.abs((cached.longitude||0)-position.longitude)<0.002;
+      if(!force&&close&&Date.now()-(cached.ts||0)<21600000){
+        state={...state,place:cached};emit();return cached;
+      }
+    }catch{}
+    try{
+      const url=`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(position.latitude)}&longitude=${encodeURIComponent(position.longitude)}&localityLanguage=de`;
+      const response=await fetch(url,{headers:{Accept:'application/json'}});
+      if(!response.ok)throw new Error('reverse geocoding failed');
+      const data=await response.json();
+      const place={
+        label:placeLabel(data),
+        locality:data.locality||data.city||'',
+        region:data.principalSubdivision||'',
+        country:data.countryName||'',
+        latitude:position.latitude,longitude:position.longitude,ts:Date.now()
+      };
+      if(place.label){localStorage.setItem(PLACE_KEY,JSON.stringify(place));state={...state,place};emit();}
+      return place;
+    }catch{
+      const fallback={label:`${position.latitude.toFixed(5)}, ${position.longitude.toFixed(5)}`,latitude:position.latitude,longitude:position.longitude,ts:Date.now(),fallback:true};
+      state={...state,place:fallback};emit();return fallback;
+    }
+  }
+
   function savePosition(coords){
     const now=Date.now();
     const position={latitude:coords.latitude,longitude:coords.longitude,accuracy:coords.accuracy,ts:now};
@@ -27,6 +71,7 @@
     localStorage.setItem(SHARED_KEY,JSON.stringify(position));
     localStorage.setItem(LIVE_KEY,JSON.stringify({lat:coords.latitude,lng:coords.longitude,accuracy:coords.accuracy,at:now}));
     emit();
+    resolvePlace(position);
   }
   function errorMessage(error){
     const browser=browserName();
@@ -90,14 +135,16 @@
     if(watchId!==null){navigator.geolocation?.clearWatch?.(watchId);watchId=null}
     requestPromise=null;
     localStorage.removeItem(PREF_KEY);
-    state={enabled:false,status:'idle',position:null,error:null};emit();
+    state={enabled:false,status:'idle',position:null,place:null,error:null};emit();
   }
   function getState(){return{...state}}
   try{
     const saved=JSON.parse(localStorage.getItem(SHARED_KEY)||'null');
+    const place=JSON.parse(localStorage.getItem(PLACE_KEY)||'null');
     if(saved&&Date.now()-(saved.ts||0)<86400000){state.position=saved;state.status=state.enabled?'active':'idle'}
+    if(place&&Date.now()-(place.ts||0)<86400000)state.place=place;
   }catch{}
-  window.ParisLocation={enable,disable,getState,permissionState,isEnabled:()=>state.enabled};
+  window.ParisLocation={enable,disable,getState,permissionState,isEnabled:()=>state.enabled,refreshPlace:()=>resolvePlace(state.position,true)};
   // Keine automatische Browser-Abfrage beim Laden: iOS verlangt dafür eine direkte Nutzeraktion.
   emit();
 })();
