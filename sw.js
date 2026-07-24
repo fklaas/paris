@@ -1,4 +1,4 @@
-const CACHE = 'paris-2026-people-live-map-v1';
+const CACHE = 'paris-2026-realtime-ui-fix-v2';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
   './ambient.css','./ambient.js','./location-service.js','./onboarding.js','./people-system.js','./profile-center.js','./gallery.css','./reisebuch.css','./reisebuch.js',
