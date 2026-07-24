@@ -78,7 +78,7 @@
       if(before.enabled&&before.status==='active'){service.disable();render('ambient');return}
       button.disabled=true;button.textContent='Standort wird angefragt …';
       try{await service.enable();await a?.useLocation?.();window.ParisLiveMoments?.enableLocation?.();render('ambient')}
-      catch(error){const ns=service.getState();button.disabled=false;button.textContent='Erneut versuchen';const err=c.querySelector('[data-location-error]');err.style.display='block';err.textContent=ns.error||'Standort konnte nicht aktiviert werden. Prüfe die Safari-Website-Einstellungen.'}
+      catch(error){const ns=service.getState();button.disabled=false;button.textContent='Erneut versuchen';const err=c.querySelector('[data-location-error]');err.style.display='block';err.textContent=ns.error||'Standort konnte nicht aktiviert werden. Prüfe die Standortberechtigung dieser Website im verwendeten Browser.'}
     };
   }
   else if(tab==='settings'){c.innerHTML=`<div class="pc-head"><div><h2>Einstellungen</h2><p>Verhalten dieses Geräts.</p></div></div><div class="pc-card"><div class="pc-row"><div><b>Entwicklermodus</b><div class="pc-meta">Technische Informationen und lokale Reset-Werkzeuge anzeigen.</div></div><div class="pc-switch ${localStorage.getItem(DEV_KEY)==='1'?'on':''}" data-devswitch></div></div></div>`;c.querySelector('[data-devswitch]').onclick=e=>{const on=!e.currentTarget.classList.contains('on');e.currentTarget.classList.toggle('on',on);localStorage.setItem(DEV_KEY,on?'1':'0')}}
