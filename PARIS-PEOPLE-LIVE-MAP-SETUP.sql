@@ -174,3 +174,74 @@ grant execute on function public.paris_add_member_activity(uuid,text,text,text) 
 grant execute on function public.paris_list_participants(uuid) to anon,authenticated;
 grant execute on function public.paris_list_member_activity(uuid,integer) to anon,authenticated;
 notify pgrst,'reload schema';
+
+-- Erweiterung: vollständiges Realtime-Aktivitätsprotokoll
+alter table public.paris_member_activity_feed add column if not exists event_type text;
+alter table public.paris_member_activity_feed add column if not exists category text;
+alter table public.paris_member_activity_feed add column if not exists icon text;
+alter table public.paris_member_activity_feed add column if not exists metadata jsonb not null default '{}'::jsonb;
+alter table public.paris_member_activity_feed add column if not exists aggregate_key text;
+alter table public.paris_member_activity_feed add column if not exists event_count integer not null default 1;
+alter table public.paris_member_activity_feed add column if not exists updated_at timestamptz not null default now();
+update public.paris_member_activity_feed set event_type=coalesce(event_type,activity_key||'.action'),category=coalesce(category,activity_key),updated_at=coalesce(updated_at,created_at) where event_type is null or category is null;
+create index if not exists paris_member_activity_feed_trip_updated_idx on public.paris_member_activity_feed(trip_id,updated_at desc);
+create index if not exists paris_member_activity_feed_aggregate_idx on public.paris_member_activity_feed(trip_id,user_id,aggregate_key,updated_at desc) where aggregate_key is not null;
+
+create or replace function public.paris_track_event(
+  p_trip_id uuid,
+  p_member_name text,
+  p_event_type text,
+  p_category text,
+  p_activity_text text,
+  p_icon text default null,
+  p_metadata jsonb default '{}'::jsonb,
+  p_aggregate_key text default null,
+  p_aggregate_window_seconds integer default 0
+) returns jsonb language plpgsql security definer set search_path=public as $$
+declare existing_id bigint;
+begin
+  if not public.paris_is_trip_member(p_trip_id) then raise exception 'Kein Zugriff auf diese Reise.'; end if;
+  if p_aggregate_key is not null and coalesce(p_aggregate_window_seconds,0)>0 then
+    select id into existing_id from public.paris_member_activity_feed
+    where trip_id=p_trip_id and user_id=auth.uid() and aggregate_key=left(p_aggregate_key,120)
+      and updated_at > now()-(greatest(1,least(p_aggregate_window_seconds,300))||' seconds')::interval
+    order by updated_at desc limit 1 for update;
+  end if;
+  if existing_id is not null then
+    update public.paris_member_activity_feed set
+      activity_text=left(p_activity_text,220),event_count=event_count+1,updated_at=now(),
+      metadata=coalesce(metadata,'{}'::jsonb)||coalesce(p_metadata,'{}'::jsonb),icon=coalesce(p_icon,icon)
+    where id=existing_id;
+  else
+    insert into public.paris_member_activity_feed(trip_id,user_id,member_name,activity_key,activity_text,event_type,category,icon,metadata,aggregate_key,event_count,created_at,updated_at)
+    values(p_trip_id,auth.uid(),left(trim(p_member_name),60),left(coalesce(p_category,'general'),40),left(p_activity_text,220),left(p_event_type,80),left(coalesce(p_category,'general'),40),left(coalesce(p_icon,'•'),12),coalesce(p_metadata,'{}'::jsonb),left(p_aggregate_key,120),1,now(),now());
+  end if;
+  delete from public.paris_member_activity_feed where trip_id=p_trip_id and updated_at < now()-interval '24 hours';
+  return jsonb_build_object('saved',true,'aggregated',existing_id is not null,'id',coalesce(existing_id,currval(pg_get_serial_sequence('public.paris_member_activity_feed','id'))));
+end;$$;
+
+create or replace function public.paris_list_activity_events(p_trip_id uuid,p_limit integer default 100)
+returns table(id bigint,user_id uuid,member_name text,activity_key text,activity_text text,event_type text,category text,icon text,metadata jsonb,aggregate_key text,event_count integer,created_at timestamptz,updated_at timestamptz)
+language sql stable security definer set search_path=public as $$
+ select a.id,a.user_id,a.member_name,a.activity_key,a.activity_text,a.event_type,a.category,a.icon,a.metadata,a.aggregate_key,a.event_count,a.created_at,a.updated_at
+ from public.paris_member_activity_feed a
+ where a.trip_id=p_trip_id and public.paris_is_trip_member(p_trip_id) and a.updated_at>now()-interval '24 hours'
+ order by a.updated_at desc limit greatest(1,least(coalesce(p_limit,100),250));
+$$;
+
+grant execute on function public.paris_track_event(uuid,text,text,text,text,text,jsonb,text,integer) to anon,authenticated;
+grant execute on function public.paris_list_activity_events(uuid,integer) to anon,authenticated;
+
+-- Realtime darf nur für Mitglieder der jeweiligen Reise lesen.
+grant select on public.paris_member_activity_feed, public.paris_member_presence to authenticated,anon;
+drop policy if exists paris_activity_realtime_select on public.paris_member_activity_feed;
+create policy paris_activity_realtime_select on public.paris_member_activity_feed for select using (public.paris_is_trip_member(trip_id));
+drop policy if exists paris_presence_realtime_select on public.paris_member_presence;
+create policy paris_presence_realtime_select on public.paris_member_presence for select using (public.paris_is_trip_member(trip_id));
+do $$ begin
+  alter publication supabase_realtime add table public.paris_member_activity_feed;
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.paris_member_presence;
+exception when duplicate_object then null; end $$;
+notify pgrst,'reload schema';
