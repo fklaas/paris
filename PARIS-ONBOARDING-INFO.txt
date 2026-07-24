@@ -1,0 +1,14 @@
+PARIS-ONBOARDING
+
+Für diese Version ist keine zusätzliche SQL-Migration nötig.
+Sie verwendet die bereits vorhandenen Supabase-Funktionen:
+- create_trip_with_code
+- join_trip_by_code
+
+Wichtig für euren bestehenden Datenstand:
+Auf Fabians Gerät „Wir reisen gemeinsam“ > „Gemeinsame Reise einrichten“ wählen.
+Die App erkennt die bisherige Paris-Reise und behält alle vorhandenen Fotos,
+Budgeteinträge, Erinnerungen, Live Moments und Tagesabschlüsse.
+
+Anschließend QR-Code auf Luisas Gerät scannen, den Namen „Luisa“ bestätigen
+und der Reise beitreten.

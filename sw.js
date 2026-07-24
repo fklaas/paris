@@ -1,7 +1,7 @@
-const CACHE = 'paris-reise-v-day-closure-sync-5-rating-layout';
+const CACHE = 'paris-reise-v-onboarding-2';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
-  './ambient.css','./ambient.js','./gallery.css','./reisebuch.css','./reisebuch.js',
+  './ambient.css','./ambient.js','./onboarding.js','./gallery.css','./reisebuch.css','./reisebuch.js',
   './live-moments.css','./smart-photo-moments.css','./revue.css','./day-closure.css'
 ];
 

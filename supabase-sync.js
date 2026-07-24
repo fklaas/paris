@@ -20,6 +20,7 @@
   let applyingRemote = false;
   let userId = null;
   let tripId = null;
+  let identity = null;
   let readyResolve;
   const ready = new Promise(resolve => { readyResolve = resolve; });
   const timers = new Map();
@@ -65,29 +66,12 @@
   }
 
   async function ensureTrip() {
-    const stored = localStorage.getItem(TRIP_LOCAL_KEY);
-    if (stored) {
-      const { data } = await client.from('trips').select('id').eq('id', stored).maybeSingle();
-      if (data?.id) { tripId = data.id; return; }
-    }
-
-    let joined = await client.rpc('join_trip_by_code', { join_code: TRIP_CODE, member_name: MEMBER_NAME });
-    if (!joined.error && joined.data) {
-      tripId = joined.data;
-    } else {
-      const created = await client.rpc('create_trip_with_code', {
-        trip_name: TRIP_NAME,
-        trip_code: TRIP_CODE,
-        owner_name: MEMBER_NAME
-      });
-      if (!created.error && created.data) tripId = created.data;
-      else {
-        joined = await client.rpc('join_trip_by_code', { join_code: TRIP_CODE, member_name: MEMBER_NAME });
-        if (joined.error) throw joined.error;
-        tripId = joined.data;
-      }
-    }
+    if (!window.ParisOnboarding?.ensure) throw new Error('Onboarding konnte nicht geladen werden.');
+    identity = await window.ParisOnboarding.ensure(client);
+    tripId = identity?.tripId || null;
+    if (!tripId) throw new Error('Keine Reise ausgewählt.');
     originalSetItem.call(localStorage, TRIP_LOCAL_KEY, tripId);
+    if (identity.memberName) originalSetItem.call(localStorage, 'parisDeviceOwner', identity.memberName);
   }
 
   function liveFingerprint(item) {
@@ -236,6 +220,9 @@
     client,
     ready,
     get tripId() { return tripId; },
+    get identity() { return identity; },
+    get memberName() { return identity?.memberName || null; },
+    get role() { return identity?.role || null; },
     bucket: BUCKET,
 
     async uploadPhoto(photo) {
@@ -371,11 +358,12 @@
         <span class="paris-cloud-badge" id="parisCloudBadge">⏳ Verbindung wird geprüft</span>
         <h2 id="parisCloudTitle">Unsere gemeinsame Paris-Reise</h2>
         <p id="parisCloudText">Dieses Gerät meldet sich automatisch anonym an und verbindet sich mit eurer gemeinsamen Reise.</p>
-        <div class="paris-cloud-code"><small>Gemeinsame Reise</small><strong>${TRIP_CODE}</strong></div>
-        <p><strong>So kommt Luisas Handy dazu:</strong><br>Einfach dieselbe Internetadresse öffnen. Es ist kein Konto, kein Passwort und kein manuell einzugebender Code nötig.</p>
+        <div class="paris-cloud-code"><small>Aktuelles Profil</small><strong id="parisCloudIdentity">Wird geladen …</strong></div>
+        <p id="parisCloudInviteText">Euer Geräteprofil ist dauerhaft mit dieser Reise verbunden.</p>
         <div class="paris-cloud-actions">
-          <button type="button" class="paris-cloud-retry" id="parisCloudRetry">Verbindung neu prüfen</button>
-          <button type="button" class="paris-cloud-close" id="parisCloudClose">Verstanden</button>
+          <button type="button" class="paris-cloud-retry" id="parisCloudInvite">Einladung anzeigen</button>
+          <button type="button" class="paris-cloud-retry" id="parisCloudRetry">Neu laden</button>
+          <button type="button" class="paris-cloud-close" id="parisCloudClose">Schließen</button>
         </div>
       </div>`;
 
@@ -390,6 +378,7 @@
     modal.addEventListener('click', event => { if (event.target === modal) close(); });
     document.getElementById('parisCloudClose').addEventListener('click', close);
     document.getElementById('parisCloudRetry').addEventListener('click', () => window.location.reload());
+    document.getElementById('parisCloudInvite').addEventListener('click', () => { close(); window.ParisOnboarding?.showInvite(); });
   }
 
   function setCloudUi(status, message) {
@@ -404,6 +393,10 @@
       if (label) label.textContent = 'Gemeinsam verbunden';
       if (badge) { badge.textContent = '✓ Supabase verbunden'; badge.style.background = '#e8f7ef'; badge.style.color = '#23734b'; }
       if (text) text.textContent = 'Dieses Gerät ist verbunden. Änderungen an gemeinsamen Inhalten werden automatisch mit dem anderen Handy synchronisiert.';
+      const ident = document.getElementById('parisCloudIdentity');
+      if (ident) ident.textContent = identity?.memberName ? `${identity.memberName} · ${identity.role === 'owner' ? 'Reisebesitzer' : identity.mode === 'solo' ? 'Alleinreisend' : 'Mitreisend'}` : 'Verbunden';
+      const invite = document.getElementById('parisCloudInvite');
+      if (invite) invite.style.display = identity?.mode === 'shared' ? '' : 'none';
     } else if (status === 'offline') {
       button?.classList.add('is-offline');
       if (label) label.textContent = 'Cloud nicht verbunden';
@@ -434,7 +427,8 @@
       await Promise.all([loadNotes(), loadAppState()]);
       subscribe();
       document.documentElement.dataset.cloudSync = 'ready';
-      document.dispatchEvent(new CustomEvent('paris:cloud-ready', { detail: { tripId } }));
+      document.documentElement.classList.add('paris-identity-ready');
+      document.dispatchEvent(new CustomEvent('paris:cloud-ready', { detail: { tripId, identity } }));
       setCloudUi('ready');
       showConnectedToast();
     } catch (error) {
