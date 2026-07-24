@@ -61,7 +61,7 @@
     if(o)return o;
     o=document.createElement('div');
     o.id='pcOverlay';o.className='pc-overlay';o.hidden=true;
-    o.innerHTML=`<div class="pc-shell"><aside class="pc-side"><div class="pc-brand">♡ Paris Profil</div><nav class="pc-nav"><button data-tab="profile">👤 Mein Profil</button><button data-tab="trips" class="active">❤️ Meine Reisen</button><button data-tab="people">👥 Teilnehmer</button><button data-tab="map">🗺️ Live-Karte</button><button data-tab="sync">☁️ Synchronisation</button><button data-tab="ambient">♫ Atmosphäre</button><button data-tab="settings">⚙️ Einstellungen</button><button data-tab="dev">🧪 Entwicklertools</button></nav><button class="pc-close" data-close>Schließen</button></aside><div class="pc-mobile-detailbar"><button class="pc-mobile-back" data-back>‹ Profil</button><div class="pc-mobile-title" data-mobile-title>Bereich</div><button class="pc-mobile-close" data-close-mobile>Schließen</button></div><main class="pc-main" data-content></main></div>`;
+    o.innerHTML=`<div class="pc-shell"><aside class="pc-side"><div class="pc-brand">♡ Paris Profil</div><nav class="pc-nav"><button data-tab="profile">👤 Mein Profil</button><button data-tab="account">🔐 Konto</button><button data-tab="trips" class="active">❤️ Meine Reisen</button><button data-tab="people">👥 Teilnehmer</button><button data-tab="map">🗺️ Live-Karte</button><button data-tab="sync">☁️ Synchronisation</button><button data-tab="ambient">♫ Atmosphäre</button><button data-tab="settings">⚙️ Einstellungen</button><button data-tab="dev">🧪 Entwicklertools</button></nav><button class="pc-close" data-close>Schließen</button></aside><div class="pc-mobile-detailbar"><button class="pc-mobile-back" data-back>‹ Profil</button><div class="pc-mobile-title" data-mobile-title>Bereich</div><button class="pc-mobile-close" data-close-mobile>Schließen</button></div><main class="pc-main" data-content></main></div>`;
     document.body.appendChild(o);
     const close=()=>{o.hidden=true;o.querySelector('.pc-shell')?.classList.remove('pc-detail');document.documentElement.classList.remove('pc-open')};
     o.querySelector('[data-close]').onclick=close;
@@ -91,8 +91,10 @@
     for(const t of cloud||[])if(t?.tripId&&!hidden.has(t.tripId))map.set(t.tripId,{...(map.get(t.tripId)||{}),...t});
     return [...map.values()]
   }
-  async function render(tab='trips'){const o=shell(),c=o.querySelector('[data-content]'),id=current();if(tab==='trips'){
-    c.innerHTML=`<div class="pc-head"><div><h2>Meine Reisen</h2><p>Alle Reisen dieser Anmeldung aus der Cloud verwalten.</p></div><button class="pc-btn primary" data-new>＋ Neue Reise</button></div><div class="pc-note" style="margin-bottom:14px">Cloud-Reisen werden über deine anonyme Anmeldung zugeordnet. Geschlossene Inkognito-Sitzungen besitzen eine andere Anmeldung und erscheinen deshalb nicht hier.</div><div class="pc-grid" data-list><div class="pc-empty">Cloud-Reisen werden geladen …</div></div>`;
+  async function render(tab='trips'){const o=shell(),c=o.querySelector('[data-content]'),id=current();if(tab==='account'){
+    if(window.ParisAuthUI?.render)window.ParisAuthUI.render(c);else c.innerHTML='<div class="pc-card">Kontomodul wird geladen …</div>';
+  }else if(tab==='trips'){
+    c.innerHTML=`<div class="pc-head"><div><h2>Meine Reisen</h2><p>Alle Reisen dieser Anmeldung aus der Cloud verwalten.</p></div><button class="pc-btn primary" data-new>＋ Neue Reise</button></div><div class="pc-note" style="margin-bottom:14px">Cloud-Reisen werden deinem aktuellen Konto zugeordnet. Anonyme Konten sollten im Bereich „Konto“ dauerhaft gesichert werden.</div><div class="pc-grid" data-list><div class="pc-empty">Cloud-Reisen werden geladen …</div></div>`;
     c.querySelector('[data-new]').onclick=()=>{if(confirm('Neue Reise einrichten? Die aktuelle Reise bleibt in deiner Übersicht gespeichert.')){localStorage.setItem('parisForceNewTripV1','1');localStorage.removeItem(ID_KEY);localStorage.removeItem('parisSupabaseTripIdV2');location.reload()}};
     const remote=await cloudTrips(),list=mergeTrips(remote,registry()),box=c.querySelector('[data-list]');
     if(!list.length){box.innerHTML='<div class="pc-empty">Für diese Anmeldung wurden noch keine Reisen gefunden.</div>';return}

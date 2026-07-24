@@ -1,8 +1,9 @@
 (() => {
   'use strict';
 
-  const SUPABASE_URL = 'https://yiadkcxgyzdgyadnhyqe.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_RMrTCl-8az9LV2y8OAGPEw_dy3ioVOs';
+  const CONFIG = window.ParisSupabaseConfig || { url: 'https://yiadkcxgyzdgyadnhyqe.supabase.co', publishableKey: 'sb_publishable_RMrTCl-8az9LV2y8OAGPEw_dy3ioVOs' };
+  const SUPABASE_URL = CONFIG.url;
+  const SUPABASE_KEY = CONFIG.publishableKey;
   const TRIP_CODE = 'KLAAS-PARIS-2026';
   const TRIP_NAME = 'Paris · Unser erster Hochzeitstag';
   const MEMBER_NAME = 'Fabian & Luisa';
@@ -11,9 +12,10 @@
   const LIVE_KEY = 'parisLiveMomentsV2';
   const NOTES_KEY = 'parisGalleryNotesV2';
 
-  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+  const client = window.ParisSupabaseClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' }
   });
+  window.ParisSupabaseClient = client;
 
   const originalSetItem = Storage.prototype.setItem;
   const originalRemoveItem = Storage.prototype.removeItem;
@@ -56,12 +58,10 @@
   }
 
   async function ensureSession() {
-    let { data: { session } } = await client.auth.getSession();
-    if (!session) {
-      const result = await client.auth.signInAnonymously();
-      if (result.error) throw result.error;
-      session = result.data.session;
-    }
+    const session = window.ParisAuth?.ensureInitialSession
+      ? await window.ParisAuth.ensureInitialSession(client)
+      : (await client.auth.getSession()).data.session;
+    if (!session) throw new Error('Keine Anmeldung verfügbar.');
     userId = session.user.id;
   }
 
