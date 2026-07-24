@@ -3,12 +3,24 @@
 
   const KEY = 'parisIdentityV1';
   const LEGACY_TRIP_KEY = 'parisSupabaseTripIdV2';
+  const DEVICE_KEY = 'parisDeviceIdentityV1';
+  const REGISTRY_KEY = 'parisTripRegistryV1';
   const DEFAULT_CODE = 'KLAAS-PARIS-2026';
   const qs = new URLSearchParams(location.search);
   const incoming = (qs.get('paris_join') || '').trim().toUpperCase();
 
   const parse = value => { try { return JSON.parse(value); } catch { return null; } };
   const saved = () => parse(localStorage.getItem(KEY));
+  const deviceIdentity = () => parse(localStorage.getItem(DEVICE_KEY));
+  const registry = () => parse(localStorage.getItem(REGISTRY_KEY)) || [];
+  const saveDeviceIdentity = profile => {
+    const previous = deviceIdentity() || {};
+    localStorage.setItem(DEVICE_KEY, JSON.stringify({
+      onboarded: true,
+      memberName: profile?.memberName || previous.memberName || localStorage.getItem('parisDeviceOwner') || '',
+      completedAt: previous.completedAt || new Date().toISOString()
+    }));
+  };
   const cleanName = value => String(value || '').trim().slice(0, 40);
   const randomCode = () => `PARIS-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36).toUpperCase().slice(0, 6)}`;
 
@@ -17,6 +29,7 @@
     localStorage.setItem(LEGACY_TRIP_KEY, profile.tripId || '');
     localStorage.removeItem('parisForceNewTripV1');
     localStorage.setItem('parisDeviceOwner', profile.memberName || '');
+    saveDeviceIdentity(profile);
     document.documentElement.classList.add('paris-identity-ready');
     document.dispatchEvent(new CustomEvent('paris:identity-ready', { detail: profile }));
     try { window.ParisTrips?.register?.(profile); } catch {}
@@ -57,7 +70,8 @@
       .po-invite-box{display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center;max-width:690px;margin:26px auto 0;padding:22px;border:1px solid #e3dade;border-radius:28px;background:#fff}.po-qr{width:190px;height:190px;padding:9px;border:1px solid #e1d9dc;border-radius:22px;background:#fff}.po-code{display:inline-block;margin:10px 0;padding:11px 16px;border-radius:999px;background:#f0f5f7;color:#304b61;font-weight:950;letter-spacing:.11em}.po-member{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#eaf8f3;color:#34745b;font-size:13px;font-weight:850}.po-note{margin-top:15px;color:#7a8791;font-size:13px;line-height:1.5}
       .po-success-art{position:relative;width:230px;height:190px;margin:10px auto 18px}.po-success-circle{position:absolute;inset:10px 30px 20px;border-radius:50%;background:linear-gradient(145deg,#ffe5ec,#dff4f4);box-shadow:0 18px 45px rgba(61,85,101,.14)}.po-success-check{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;place-items:center;width:82px;height:82px;border-radius:50%;background:#fff;color:#db6689;font-size:42px;font-weight:900;box-shadow:0 12px 30px rgba(72,93,107,.18)}.po-success-star{position:absolute;color:#e9a82b;font-size:25px}.po-success-star.a{left:12px;top:45px}.po-success-star.b{right:8px;top:22px}.po-success-star.c{right:28px;bottom:20px}.po-profile-pill{display:inline-flex;align-items:center;gap:9px;margin-top:18px;padding:10px 15px;border-radius:999px;background:#edf8f6;color:#3a7664;font-weight:900}
       .po-footer{display:flex;justify-content:center;padding:0 30px 25px;color:#9aa5ac;font-size:12px}.po-back-link{border:0;background:none;color:#b7657e;font-weight:900;text-decoration:underline;cursor:pointer}.paris-identity-ready .closure-person-switch button{display:none}.paris-identity-ready .closure-person-switch small{font-size:0}.paris-identity-ready .closure-person-switch small:after{content:"Dieses Gerät:";font-size:11px}.paris-identity-ready .device-owner{display:none}
-      @media(max-width:760px){.paris-onboarding{padding:0}.po-shell{min-height:100%;border:0;border-radius:0}.po-header{padding:18px 18px 4px}.po-stage-label{display:none}.po-progress span{width:24px}.po-main{padding:12px 18px 24px}.po-slide{grid-template-columns:1fr;text-align:center;gap:12px}.po-kicker{margin-inline:auto}.po-copy{margin-inline:auto}.po-art{min-height:270px;order:-1}.po-art-card{width:270px;border-radius:34px}.po-eiffel{height:185px;width:95px;bottom:45px}.po-polaroid{width:78px;padding:6px 6px 20px}.po-polaroid .pic{height:57px}.po-choice-grid,.po-connect-grid{grid-template-columns:1fr;gap:12px}.po-choice{min-height:155px;padding:20px}.po-choice-art{height:62px}.po-person{width:52px;height:62px}.po-connect-card{padding:19px}.po-invite-box{grid-template-columns:1fr;text-align:center}.po-qr{width:170px;height:170px;margin:auto}.po-actions{display:grid}.po-btn{width:100%}.po-title{font-size:43px}.po-title.small{font-size:38px}.po-footer{padding-bottom:18px}}
+      .po-trip-list{display:grid;gap:12px;margin:24px auto 0;max-width:720px;text-align:left}.po-trip-option{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:18px;border:1px solid #dde6ea;border-radius:22px;background:rgba(255,255,255,.86);box-shadow:0 10px 28px rgba(49,67,82,.07)}.po-trip-option strong{display:block;color:#304b61;font-size:19px}.po-trip-option small{display:block;margin-top:5px;color:#758590;line-height:1.4}.po-trip-empty{padding:22px;border:1px dashed #d7e0e5;border-radius:22px;color:#71818e;background:rgba(248,251,252,.8)}.po-status{margin-top:14px;color:#788792;font-size:14px}.po-action-stack{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:720px;margin:20px auto 0}.po-action-stack .po-btn{width:100%}
+      @media(max-width:760px){.paris-onboarding{padding:0}.po-shell{min-height:100%;border:0;border-radius:0}.po-header{padding:18px 18px 4px}.po-stage-label{display:none}.po-progress span{width:24px}.po-main{padding:12px 18px 24px}.po-slide{grid-template-columns:1fr;text-align:center;gap:12px}.po-kicker{margin-inline:auto}.po-copy{margin-inline:auto}.po-art{min-height:270px;order:-1}.po-art-card{width:270px;border-radius:34px}.po-eiffel{height:185px;width:95px;bottom:45px}.po-polaroid{width:78px;padding:6px 6px 20px}.po-polaroid .pic{height:57px}.po-choice-grid,.po-connect-grid{grid-template-columns:1fr;gap:12px}.po-choice{min-height:155px;padding:20px}.po-choice-art{height:62px}.po-person{width:52px;height:62px}.po-connect-card{padding:19px}.po-invite-box{grid-template-columns:1fr;text-align:center}.po-qr{width:170px;height:170px;margin:auto}.po-actions{display:grid}.po-trip-option{grid-template-columns:1fr}.po-action-stack{grid-template-columns:1fr}.po-btn{width:100%}.po-title{font-size:43px}.po-title.small{font-size:38px}.po-footer{padding-bottom:18px}}
     `;
     document.head.appendChild(style);
   }
@@ -337,6 +351,75 @@
     };
   }
 
+
+  function normalizeTrip(row) {
+    return {
+      tripId: row.trip_id || row.tripId,
+      tripName: row.trip_name || row.tripName || 'Paris · Unser erster Hochzeitstag',
+      joinCode: row.join_code || row.joinCode || '',
+      memberName: row.member_name || row.memberName || deviceIdentity()?.memberName || 'Mitreisend',
+      role: row.is_owner ? 'owner' : (row.member_role || row.role || 'member'),
+      mode: row.mode || 'shared',
+      memberCount: Number(row.member_count || row.memberCount || 1),
+      cloud: Boolean(row.trip_id || row.cloud)
+    };
+  }
+
+  async function loadAvailableTrips(client) {
+    const map = new Map();
+    for (const item of registry()) {
+      const trip = normalizeTrip(item || {});
+      if (trip.tripId) map.set(trip.tripId, trip);
+    }
+    let cloudError = null;
+    try {
+      const result = await client.rpc('paris_list_my_trips');
+      if (result.error) throw result.error;
+      for (const row of result.data || []) {
+        const trip = normalizeTrip(row);
+        if (trip.tripId) map.set(trip.tripId, { ...(map.get(trip.tripId) || {}), ...trip, cloud: true });
+      }
+    } catch (error) { cloudError = error; }
+    return { trips: [...map.values()], cloudError };
+  }
+
+  function activateTrip(profile, resolve) {
+    const clean = { ...profile };
+    delete clean.cloud; delete clean.memberCount; delete clean.stats; delete clean.isOwner;
+    store(clean);
+    hide();
+    resolve(clean);
+  }
+
+  async function tripChooser(client, resolve) {
+    const root = setStage(2, `
+      <div class="po-slide po-centered"><div><span class="po-kicker">❤️ Willkommen zurück</span><h1 class="po-title small">Welche Reise möchtest du öffnen?</h1><p class="po-copy">Wir konnten gerade keine aktive Reise öffnen. Deine Einrichtung bleibt bestehen – wähle eine Reise, erstelle eine neue oder verbinde dich per Einladungscode.</p></div><div><div class="po-trip-list" data-list><div class="po-trip-empty">Cloud-Reisen werden gesucht …</div></div><div class="po-status" data-status></div><div class="po-action-stack"><button class="po-btn primary" data-new>Neue Reise erstellen</button><button class="po-btn secondary" data-join>Mit Code beitreten</button><button class="po-btn secondary" data-sync>Cloud neu synchronisieren</button></div></div></div>`);
+    const list = root.querySelector('[data-list]');
+    const status = root.querySelector('[data-status]');
+    const renderList = async () => {
+      list.innerHTML = '<div class="po-trip-empty">Cloud-Reisen werden gesucht …</div>';
+      status.textContent = '';
+      const { trips, cloudError } = await loadAvailableTrips(client);
+      list.innerHTML = '';
+      if (!trips.length) list.innerHTML = '<div class="po-trip-empty"><strong>Noch keine Reise gefunden.</strong><br>Du kannst eine neue Reise erstellen oder einer bestehenden Reise beitreten. Das ist kein erneutes Onboarding.</div>';
+      for (const trip of trips) {
+        const item = document.createElement('div');
+        item.className = 'po-trip-option';
+        item.innerHTML = `<div><strong>${String(trip.tripName).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}</strong><small>${trip.role === 'owner' ? 'Reisebesitzer' : 'Mitreisend'} · ${trip.memberCount || 1} Teilnehmer${trip.joinCode ? ' · ' + trip.joinCode : ''}${trip.cloud ? ' · ☁ Cloud' : ' · nur lokal bekannt'}</small></div><button class="po-btn primary">Öffnen</button>`;
+        item.querySelector('button').onclick = () => activateTrip(trip, resolve);
+        list.appendChild(item);
+      }
+      if (cloudError) status.textContent = 'Die Cloud konnte gerade nicht vollständig geprüft werden. Lokal bekannte Reisen bleiben auswählbar.';
+    };
+    root.querySelector('[data-new]').onclick = () => {
+      localStorage.setItem('parisForceNewTripV1','1');
+      createShared(client, resolve, () => tripChooser(client, resolve));
+    };
+    root.querySelector('[data-join]').onclick = () => joinShared(client, resolve, '', () => tripChooser(client, resolve));
+    root.querySelector('[data-sync]').onclick = renderList;
+    await renderList();
+  }
+
   function run(client, resolve) {
     if (incoming) {
       joinFromInvite(client, resolve, incoming);
@@ -367,7 +450,16 @@
         hide();
         return profile;
       }
+      // Bestehende Installationen werden automatisch als bereits eingerichtet markiert.
+      const knownName = localStorage.getItem('parisDeviceOwner') || registry().find(x => x?.memberName)?.memberName;
+      if (!deviceIdentity() && knownName) saveDeviceIdentity({ memberName: knownName });
+      if (incoming) return new Promise(resolve => joinFromInvite(client, resolve, incoming));
+      if (deviceIdentity()?.onboarded) return new Promise(resolve => tripChooser(client, resolve));
       return new Promise(resolve => run(client, resolve));
+    },
+    chooseTrip(client = window.ParisCloud?.client) {
+      if (!client) return;
+      return new Promise(resolve => tripChooser(client, resolve));
     },
     showInvite() {
       const profile = saved();

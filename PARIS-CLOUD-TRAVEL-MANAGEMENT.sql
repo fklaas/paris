@@ -156,3 +156,65 @@ grant execute on function public.paris_delete_empty_trip(uuid) to anon, authenti
 grant execute on function public.paris_is_trip_owner(uuid) to anon, authenticated;
 
 notify pgrst, 'reload schema';
+
+-- Vollständiges Löschen einer eigenen Reise. Die App verlangt zusätzlich
+-- die exakt eingegebene Bestätigung LÖSCHEN.
+create or replace function public.paris_delete_trip(p_trip_id uuid, p_confirmation text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, storage
+as $$
+declare
+  v_table text;
+begin
+  if p_confirmation is distinct from 'LÖSCHEN' then
+    raise exception 'Bestätigung fehlt.';
+  end if;
+  if not public.paris_is_trip_owner(p_trip_id) then
+    raise exception 'Nur der Reisebesitzer darf diese Reise endgültig löschen.';
+  end if;
+
+  foreach v_table in array array[
+    'reminder_completions','reminders','phrase_favorites','custom_phrases',
+    'favorites','day_notes','day_closures','budget_entries','live_moments','gallery_photos'
+  ] loop
+    if to_regclass('public.' || v_table) is not null then
+      execute format('delete from public.%I where trip_id = $1', v_table) using p_trip_id;
+    end if;
+  end loop;
+
+  -- Hochgeladene Galeriedateien liegen unter <trip-id>/...
+  if to_regclass('storage.objects') is not null then
+    delete from storage.objects
+    where bucket_id = 'paris-gallery'
+      and name like p_trip_id::text || '/%';
+  end if;
+
+  delete from public.trip_settings where trip_id = p_trip_id;
+  delete from public.trip_members tm where (to_jsonb(tm)->>'trip_id')::uuid = p_trip_id;
+  delete from public.trips where id = p_trip_id;
+  return jsonb_build_object('deleted', true, 'trip_id', p_trip_id);
+end;
+$$;
+
+create or replace function public.paris_leave_trip(p_trip_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if public.paris_is_trip_owner(p_trip_id) then
+    raise exception 'Der Reisebesitzer kann die Reise nicht verlassen. Übertrage zuerst die Besitzerrolle oder lösche die Reise.';
+  end if;
+  delete from public.trip_members tm
+  where (to_jsonb(tm)->>'trip_id')::uuid = p_trip_id
+    and (to_jsonb(tm)->>'user_id')::uuid = auth.uid();
+  return jsonb_build_object('left', true, 'trip_id', p_trip_id);
+end;
+$$;
+
+grant execute on function public.paris_delete_trip(uuid,text) to anon, authenticated;
+grant execute on function public.paris_leave_trip(uuid) to anon, authenticated;
+notify pgrst, 'reload schema';
