@@ -95,7 +95,14 @@
   }
 
   function hide() { shell().hidden = true; }
-  function showError(message) { const el = document.querySelector('.po-error'); if (el) { el.textContent = message; el.classList.add('show'); } }
+  function friendlyError(error) {
+    const message = String(error?.message || error || 'Unbekannter Fehler');
+    if (/permission denied for function (create_trip_with_code|join_trip_by_code)/i.test(message)) {
+      return 'Supabase hat noch keine Berechtigung für die Reise-Funktion. Führe einmal PARIS-TRIP-FUNCTION-PERMISSIONS.sql im Supabase SQL Editor aus und versuche es danach erneut.';
+    }
+    return message;
+  }
+  function showError(message) { const el = document.querySelector('.po-error'); if (el) { el.textContent = friendlyError(message); el.classList.add('show'); } }
   function loading(button, active, label = 'Wird eingerichtet …') { if (!button) return; button.disabled = active; if (active) { button.dataset.old = button.textContent; button.textContent = label; } else { button.textContent = button.dataset.old || button.textContent; } }
 
   async function rpcCreate(client, name, code, member) {
@@ -159,7 +166,7 @@
         const profile = { tripId, memberName, role: 'owner', mode: 'solo', joinCode };
         store(profile);
         success(profile, resolve);
-      } catch (error) { showError(error.message); loading(event.currentTarget, false); }
+      } catch (error) { showError(error); loading(event.currentTarget, false); }
     };
   }
 
@@ -200,7 +207,7 @@
         const profile = { tripId, memberName, role: 'owner', mode: 'shared', joinCode };
         store(profile);
         invite(profile, resolve);
-      } catch (error) { showError(error.message); loading(event.currentTarget, false); }
+      } catch (error) { showError(error); loading(event.currentTarget, false); }
     };
   }
 
