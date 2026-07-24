@@ -319,7 +319,7 @@
 
     const style = document.createElement('style');
     style.textContent = `
-      .paris-cloud-button{position:fixed;right:16px;top:16px;z-index:9998;display:flex;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.55);border-radius:999px;padding:10px 14px;background:rgba(20,39,59,.88);color:#fff;box-shadow:0 10px 30px rgba(15,31,48,.24);backdrop-filter:blur(14px);font:800 12px/1.1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer;transition:.25s ease}
+      .paris-cloud-button{display:none!important;position:fixed;right:16px;top:16px;z-index:9998;display:flex;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.55);border-radius:999px;padding:10px 14px;background:rgba(20,39,59,.88);color:#fff;box-shadow:0 10px 30px rgba(15,31,48,.24);backdrop-filter:blur(14px);font:800 12px/1.1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer;transition:.25s ease}
       .paris-cloud-button:hover{transform:translateY(-1px)}
       .paris-cloud-button .cloud-dot{width:9px;height:9px;border-radius:50%;background:#f2c86b;box-shadow:0 0 0 5px rgba(242,200,107,.15)}
       .paris-cloud-button.is-ready .cloud-dot{background:#6ed59d;box-shadow:0 0 0 5px rgba(110,213,157,.15)}
@@ -337,7 +337,7 @@
       .paris-cloud-actions button{flex:1;min-width:150px;border:0;border-radius:999px;padding:13px 16px;font-weight:900;cursor:pointer}
       .paris-cloud-close{background:#203247;color:white}
       .paris-cloud-retry{background:#eee3d3;color:#203247}
-      .paris-cloud-toast{position:fixed;left:50%;bottom:24px;z-index:10010;max-width:calc(100% - 32px);transform:translate(-50%,24px);opacity:0;padding:12px 17px;border-radius:999px;background:#203247;color:#fff;box-shadow:0 14px 38px rgba(8,24,39,.3);font:800 13px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:.35s ease;pointer-events:none;text-align:center}
+      .paris-cloud-toast{display:none!important;position:fixed;left:50%;bottom:24px;z-index:10010;max-width:calc(100% - 32px);transform:translate(-50%,24px);opacity:0;padding:12px 17px;border-radius:999px;background:#203247;color:#fff;box-shadow:0 14px 38px rgba(8,24,39,.3);font:800 13px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:.35s ease;pointer-events:none;text-align:center}
       .paris-cloud-toast.is-visible{transform:translate(-50%,0);opacity:1}
       @media(max-width:700px){.paris-cloud-button{top:10px;right:10px;padding:9px 11px}.paris-cloud-button .cloud-label{max-width:122px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.paris-cloud-card{padding:22px;border-radius:24px}}
     `;
@@ -382,6 +382,7 @@
   }
 
   function setCloudUi(status, message) {
+    window.ParisCloudStatus={status,message:message||''};
     injectCloudUi();
     const button = document.getElementById('parisCloudButton');
     const label = button?.querySelector('.cloud-label');
