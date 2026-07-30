@@ -1,0 +1,5 @@
+AUDIO-HINWEIS
+
+Die Dateien ambient-home.ogg, ambient-road.ogg und ambient-paris.ogg enthalten eine eigens für dieses private Reiseprojekt synthetisch erzeugte, originale Instrumentalbegleitung im leichten Musette-/Café-Stil. Sie basiert auf keiner bekannten Melodie und enthält keine fremden Samples, keine Verkehrsgeräusche und keine extern lizenzierte Musik.
+
+Die übrigen Ambient-Dateien sind ebenfalls ausschließlich für die lokale Atmosphäre dieses Projekts vorgesehen.
