@@ -1,0 +1,51 @@
+REISEZEIT / PARIS 2026 · NEUES SUPABASE-PROJEKT
+================================================
+
+Verbundenes Projekt:
+https://bsbvvikslbugkipdjrzs.supabase.co
+
+WICHTIG
+-------
+Im neuen Supabase-Projekt nur diese eine Datei ausführen:
+
+SUPABASE-ERSTINSTALLATION-PARIS.sql
+
+Die Dateien im Ordner supabase-legacy sind historische Einzelschritte und
+werden für dieses neue Projekt nicht benötigt.
+
+REIHENFOLGE
+-----------
+1. Supabase Dashboard des Projekts bsbvvikslbugkipdjrzs öffnen.
+2. SQL Editor öffnen.
+3. Eine neue Query anlegen.
+4. Den vollständigen Inhalt von SUPABASE-ERSTINSTALLATION-PARIS.sql einfügen.
+5. Run ausführen.
+6. In der letzten Ergebniszeile müssen alle Prüffelder TRUE anzeigen.
+7. Danach Auth-Einstellungen und Webadresse konfigurieren.
+8. Erst anschließend diese App-Version veröffentlichen und testen.
+
+ENTHALTEN
+---------
+- Reisen und Teilnehmer
+- Besitzerrollen und Einladungscodes
+- Galerie-Metadaten
+- privater Storage-Bucket paris-gallery
+- Live Moments
+- Erinnerungen
+- Budget
+- Tagesabschluss und Schritte
+- Teilnehmerprofile, Präsenz, Aktivitätsfeed und Live-Karte
+- Row Level Security
+- Data-API-Rechte
+- Realtime
+- alle von V13 verwendeten RPC-Funktionen
+
+NICHT ENTHALTEN / NICHT NÖTIG
+-----------------------------
+- service_role- oder Secret-Key in der App
+- Edge Functions
+- luvia-gateway
+- Google- oder Apple-OAuth-Konfiguration
+
+Der Publishable Key ist bereits in auth/config.js und im Fallback von
+supabase-sync.js eingetragen.

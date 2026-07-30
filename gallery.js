@@ -50,7 +50,11 @@
     photos: [],
     urls: new Map(),
     notes: loadNotes(),
-    busy: false
+    busy: false,
+    reconcileBusy: false,
+    realtimeStatus: 'CLOSED',
+    unsubscribe: null,
+    reconcileTimer: null
   };
   const $ = (selector, root = document) => root.querySelector(selector);
   const els = {};
@@ -145,8 +149,19 @@
     return new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
   }
 
-  function uniqueId(file) {
-    return `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`;
+  const pendingPhotoIds = new Set();
+
+  async function uniqueId(file) {
+    // iOS kann beim Kamera-Dialog dasselbe Bild in seltenen Fällen zweimal an den
+    // Change-Handler liefern. Eine inhaltsbasierte UUID macht beide Vorgänge
+    // idempotent: exakt dieselbe Datei besitzt immer exakt dieselbe Foto-ID.
+    if (crypto.subtle) {
+      const buffer = await file.arrayBuffer();
+      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', buffer));
+      const hex = [...digest].map(value => value.toString(16).padStart(2, '0')).join('');
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+    }
+    return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}-4${Math.random().toString(16).slice(2,5)}-8${Math.random().toString(16).slice(2,5)}-${Math.random().toString(16).slice(2,14)}`;
   }
 
   function arrayBufferSlice(file, start, length) {
@@ -247,28 +262,39 @@
     let added = 0;
     try {
       for (const file of images) {
-        const duplicate = state.photos.some(photo => photo.originalName === file.name && photo.size === file.size && photo.lastModified === file.lastModified);
+        const id = await uniqueId(file);
+        const duplicate = pendingPhotoIds.has(id) || state.photos.some(photo => photo.id === id);
         if (duplicate) continue;
-        const date = await takenDate(file);
-        const key = dateKey(date);
-        const group = tripGroup(key);
-        const item = {
-          id: uniqueId(file),
-          blob: file,
-          originalName: file.name,
-          size: file.size,
-          lastModified: file.lastModified,
-          takenAt: date.toISOString(),
-          dateKey: key,
-          group,
-          favorite: false,
-          polaroid: false,
-          caption: '',
-          createdAt: new Date().toISOString()
-        };
-        await put(item);
-        state.photos.push(item);
-        added++;
+
+        pendingPhotoIds.add(id);
+        try {
+          const date = await takenDate(file);
+          const key = dateKey(date);
+          const group = tripGroup(key);
+          const item = {
+            id,
+            blob: file,
+            originalName: file.name,
+            size: file.size,
+            lastModified: file.lastModified,
+            takenAt: date.toISOString(),
+            dateKey: key,
+            group,
+            favorite: false,
+            polaroid: false,
+            caption: '',
+            createdAt: new Date().toISOString()
+          };
+
+          // Erst in der gemeinsamen Cloud speichern. Danach lokal per ID upserten.
+          // Trifft währenddessen bereits das eigene Realtime-Ereignis ein, ersetzt
+          // das Upsert denselben Datensatz, statt eine zweite Karte anzulegen.
+          if (window.ParisSync?.gallery) await window.ParisSync.gallery.upload(item);
+          await upsertLocalPhoto(item);
+          added++;
+        } finally {
+          pendingPhotoIds.delete(id);
+        }
       }
       await normalizePolaroids();
       render();
@@ -290,6 +316,7 @@
       for (const photo of selected.slice(1)) {
         photo.polaroid = false;
         await put(photo);
+        if (window.ParisSync?.gallery) await window.ParisSync.gallery.update(photo.id, { polaroid: false });
       }
     }
   }
@@ -299,6 +326,7 @@
     if (!photo) return;
     Object.assign(photo, patch);
     await put(photo);
+    if (window.ParisSync?.gallery) await window.ParisSync.gallery.update(id, patch);
     if (rerender) render();
   }
 
@@ -319,6 +347,7 @@
       if (photo.polaroid !== value) {
         photo.polaroid = value;
         await put(photo);
+        if (window.ParisSync?.gallery) await window.ParisSync.gallery.update(photo.id, { polaroid: value });
       }
     }
     render();
@@ -327,6 +356,8 @@
 
   async function removePhoto(id) {
     if (!confirm('Dieses Foto aus der Reisegalerie entfernen?')) return;
+    const photo = state.photos.find(item => item.id === id);
+    if (window.ParisSync?.gallery && photo) await window.ParisSync.gallery.remove(photo);
     await del(id);
     cleanupUrl(id);
     state.photos = state.photos.filter(photo => photo.id !== id);
@@ -337,6 +368,7 @@
   async function removeAll() {
     if (!state.photos.length && !Object.values(state.notes).some(value => String(value).trim())) return;
     if (!confirm('Alle lokal gespeicherten Galeriefotos und Tagesnotizen entfernen?')) return;
+    if (window.ParisSync?.gallery) await window.ParisSync.gallery.clear();
     await clearAll();
     state.urls.forEach(url => URL.revokeObjectURL(url));
     state.urls.clear();
@@ -438,7 +470,26 @@
     return day;
   }
 
+  function dedupePhotosById() {
+    const unique = new Map();
+    for (const photo of state.photos) unique.set(photo.id, photo);
+    state.photos = [...unique.values()];
+  }
+
+  async function upsertLocalPhoto(photo) {
+    const index = state.photos.findIndex(item => item.id === photo.id);
+    if (index >= 0) {
+      cleanupUrl(photo.id);
+      state.photos[index] = photo;
+    } else {
+      state.photos.push(photo);
+    }
+    dedupePhotosById();
+    await put(photo);
+  }
+
   function render() {
+    dedupePhotosById();
     state.photos.sort((a, b) => new Date(a.takenAt) - new Date(b.takenAt));
     els.empty.hidden = state.photos.length > 0;
     renderHighlights();
@@ -455,6 +506,83 @@
     els.favorites.textContent = favorites;
     els.notes.textContent = notes;
     els.bookSummary.textContent = `${state.photos.length} Fotos, ${favorites} Favoriten und ${notes} Tagesnotizen sind lokal für das spätere Reisebuch vorbereitet.`;
+  }
+
+
+  function applyRowMetadata(photo, row) {
+    photo.favorite = Boolean(row.is_favorite);
+    photo.polaroid = Boolean(row.is_polaroid);
+    photo.caption = row.description ?? row.caption ?? '';
+    photo.storagePath = row.storage_path;
+    photo.originalName = row.original_filename || photo.originalName;
+    photo.size = row.file_size ?? photo.size;
+    photo.takenAt = row.taken_at || row.created_at;
+    photo.createdAt = row.created_at;
+    photo.updatedAt = row.updated_at || row.created_at;
+    const key = dateKey(new Date(photo.takenAt));
+    photo.dateKey = key;
+    photo.group = tripGroup(key);
+  }
+
+  async function reconcileFromCloud({ forceRender = false } = {}) {
+    if (!window.ParisSync?.gallery || state.reconcileBusy || document.hidden) return;
+    state.reconcileBusy = true;
+    let changed = false;
+    try {
+      const rows = await window.ParisSync.gallery.listRows();
+      const remoteById = new Map(rows.map(row => [row.id, row]));
+
+      for (const local of [...state.photos]) {
+        if (!remoteById.has(local.id)) {
+          await del(local.id);
+          cleanupUrl(local.id);
+          state.photos = state.photos.filter(photo => photo.id !== local.id);
+          changed = true;
+        }
+      }
+
+      for (const row of rows) {
+        const local = state.photos.find(photo => photo.id === row.id);
+        if (!local) {
+          const fresh = await window.ParisSync.gallery.get(row.id);
+          if (fresh) {
+            fresh.updatedAt = row.updated_at || row.created_at;
+            // Realtime und der 2-Sekunden-Abgleich können gleichzeitig ankommen.
+            // Deshalb nach dem Download erneut per ID zusammenführen statt blind anzuhängen.
+            await upsertLocalPhoto(fresh);
+            changed = true;
+          }
+          continue;
+        }
+        const remoteStamp = String(row.updated_at || row.created_at || '');
+        const localStamp = String(local.updatedAt || local.createdAt || '');
+        const metadataChanged = remoteStamp !== localStamp ||
+          local.favorite !== Boolean(row.is_favorite) ||
+          local.polaroid !== Boolean(row.is_polaroid) ||
+          local.caption !== (row.description ?? row.caption ?? '');
+        if (metadataChanged) {
+          applyRowMetadata(local, row);
+          await put(local);
+          changed = true;
+        }
+      }
+      if (changed || forceRender) render();
+    } catch (error) {
+      console.warn('Galerie-Abgleich:', error.message);
+    } finally {
+      state.reconcileBusy = false;
+    }
+  }
+
+  function startCloudGuard() {
+    clearInterval(state.reconcileTimer);
+    state.reconcileTimer = setInterval(() => reconcileFromCloud(), 2000);
+    const wake = () => {
+      if (!document.hidden) reconcileFromCloud({ forceRender: false });
+    };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('focus', wake);
+    window.addEventListener('online', wake);
   }
 
   async function exportMetadata() {
@@ -527,6 +655,63 @@
         photo.polaroid = Boolean(photo.polaroid);
         photo.caption = photo.caption || '';
       });
+      if (window.ParisSync?.gallery) {
+        await window.ParisSync.ready;
+        // Ab jetzt ist Supabase die einzige gemeinsame Quelle der Galerie.
+        // Alte lokale Bilder werden NICHT bei jedem Start erneut hochgeladen.
+        const remotePhotos = await window.ParisSync.gallery.list();
+        await clearAll();
+        for (const remotePhoto of remotePhotos) await put(remotePhoto);
+        state.urls.forEach(url => URL.revokeObjectURL(url));
+        state.urls.clear();
+        state.photos = remotePhotos;
+
+        state.unsubscribe = await window.ParisSync.gallery.subscribe(async payload => {
+          try {
+            const id = payload.new?.id || payload.old?.id;
+            if (!id) {
+              await reconcileFromCloud();
+              return;
+            }
+
+            if (payload.eventType === 'DELETE') {
+              await del(id);
+              cleanupUrl(id);
+              state.photos = state.photos.filter(photo => photo.id !== id);
+              render();
+              return;
+            }
+
+            if (payload.eventType === 'UPDATE') {
+              const photo = state.photos.find(item => item.id === id);
+              if (photo) {
+                applyRowMetadata(photo, payload.new);
+                await put(photo);
+                render();
+                return;
+              }
+            }
+
+            const freshPhoto = await window.ParisSync.gallery.get(id);
+            if (!freshPhoto) {
+              await reconcileFromCloud();
+              return;
+            }
+            freshPhoto.updatedAt = payload.new?.updated_at || payload.new?.created_at;
+            // Derselbe INSERT kann nahezu zeitgleich über Realtime und den
+            // Cloud-Abgleich eintreffen. Immer als Upsert behandeln, nie anhängen.
+            await upsertLocalPhoto(freshPhoto);
+            render();
+          } catch (error) {
+            console.warn('Galerie-Realtime:', error.message);
+            await reconcileFromCloud();
+          }
+        }, status => {
+          state.realtimeStatus = status;
+          if (status === 'SUBSCRIBED') reconcileFromCloud();
+        });
+        startCloudGuard();
+      }
       await normalizePolaroids();
       render();
     } catch (error) {

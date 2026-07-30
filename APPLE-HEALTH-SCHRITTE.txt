@@ -1,0 +1,22 @@
+APPLE HEALTH UND DIE PARIS-WEB-APP
+
+Wichtig:
+Eine normale Website oder eine zum iPhone-Homescreen hinzugefügte PWA darf Apple Health nicht direkt auslesen. Apple stellt HealthKit nur nativen iOS-Apps und der Kurzbefehle-App zur Verfügung.
+
+Die App ist deshalb so vorbereitet, dass ein Apple-Kurzbefehl den Tageswert über die URL übergeben kann:
+
+https://EURE-DOMAIN/?health_steps=12345&health_date=2026-07-31&health_member=Fabian
+
+Im Kurzbefehl:
+1. Aktion „Gesundheitsproben suchen“ auswählen.
+2. Typ: Schritte.
+3. Startdatum und Enddatum auf den gewünschten Reisetag setzen.
+4. Die Werte summieren.
+5. URL-Text zusammensetzen, dabei 12345 durch die berechnete Summe ersetzen.
+6. Fabian bzw. Luisa fest eintragen.
+7. Aktion „URLs öffnen“ verwenden.
+
+Beim Öffnen speichert die App den Wert automatisch in Supabase. Der Mittelwert aus Fabian und Luisa wird danach auf beiden Geräten angezeigt.
+
+Ohne Kurzbefehl:
+Im Tagesabschluss auf „Schritte eintragen“ tippen, einmal festlegen, wem das Gerät gehört, und den Wert aus Apple Health eintragen.

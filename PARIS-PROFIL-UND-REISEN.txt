@@ -1,0 +1,16 @@
+PROFIL- UND REISEVERWALTUNG
+
+Das Herz-Symbol unten rechts öffnet den Profilbereich.
+
+Bereiche:
+- Mein Profil
+- Meine Reisen
+- Teilnehmer
+- Synchronisation
+- Einstellungen
+- Entwicklertools
+
+Wichtig zu Inkognito-Tests:
+Jedes Inkognito-Fenster erzeugt eine eigene anonyme Supabase-Anmeldung. Bereits geschlossene Inkognito-Sitzungen können nicht nachträglich einer normalen Browser- oder PWA-Installation zugeordnet werden. Der neue Reiseverlauf speichert ab jetzt alle auf demselben Gerät erstellten oder beigetretenen Reisen.
+
+Leere Testreisen können aus der lokalen Übersicht entfernt werden. Das entfernt zunächst die Gerätezuordnung, nicht automatisch alle Cloud-Datensätze.
