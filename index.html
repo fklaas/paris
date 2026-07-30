@@ -6429,7 +6429,7 @@ body.app-gateway-locked>#parisCloudButton{visibility:hidden!important;pointer-ev
   }
   updateCountdowns(); setInterval(updateCountdowns,60000);
 
-  // Budget wird zentral über ParisSync und budget.js synchronisiert.
+  // Budget wird zentral über ParisSync und budget.js?v=20260730-shared-sync-hotfix-1 synchronisiert.
 
   // Erinnerungen und Tagesabschlüsse werden zentral über ParisSync synchronisiert.
   // Hochwertiger Magazin-Viewer mit einzelnen Seiten, Zoom und Wischsteuerung
@@ -6681,7 +6681,7 @@ body.app-gateway-locked>#parisCloudButton{visibility:hidden!important;pointer-ev
   // PWA
   if("serviceWorker" in navigator) window.addEventListener("load",async()=>{
   try{
-    const registration=await navigator.serviceWorker.register("./sw.js?v=reminders-mobile-reset-1",{updateViaCache:"none"});
+    const registration=await navigator.serviceWorker.register("./sw.js?v=20260730-shared-sync-hotfix-1",{updateViaCache:"none"});
     await registration.update();
     navigator.serviceWorker.addEventListener("controllerchange",()=>{
       if(!sessionStorage.getItem("parisSwReloaded")){sessionStorage.setItem("parisSwReloaded","1");location.reload();}
@@ -7099,26 +7099,26 @@ body.app-gateway-locked>#parisCloudButton{visibility:hidden!important;pointer-ev
 
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="auth/config.js?v=20260724-6" defer></script>
-<script src="auth/session.js?v=20260724-6" defer></script>
-<script src="auth/ui.js?v=20260724-9" defer></script>
+<script src="auth/config.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="auth/session.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="auth/ui.js?v=20260730-shared-sync-hotfix-1" defer></script>
 <script src="app-gateway.js?v=20260724-10" defer></script>
-<script src="onboarding.js?v=20260724-13" defer></script>
-<script src="supabase-sync.js?v=20260724-auth-4" defer></script>
-<script src="people-system.js?v=20260724-13" defer></script>
-<script src="profile-center.js?v=20260724-13" defer></script>
-<script src="sync/core.js?v=20260724-2" defer></script>
-<script src="sync/gallery.js?v=20260723-6" defer></script>
-<script src="sync/budget.js?v=20260723-3" defer></script>
-<script src="sync/reminders.js?v=20260723-5" defer></script>
-<script src="sync/live-moments.js?v=20260723-1" defer></script>
-<script src="sync/day-closure.js?v=20260724-2" defer></script>
+<script src="onboarding.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="supabase-sync.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="people-system.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="profile-center.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="sync/core.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="sync/gallery.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="sync/budget.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="sync/reminders.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="sync/live-moments.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="sync/day-closure.js?v=20260730-shared-sync-hotfix-1" defer></script>
 <script src="sprachcoach.js" defer></script>
-<script src="gallery.js?v=20260723-5" defer></script>
-<script src="budget.js?v=20260723-2" defer></script>
-<script src="reminders.js?v=20260723-5" defer></script>
-<script src="live-moments.js?v=20260724-2" defer></script>
-<script src="day-closure.js?v=20260724-2" defer></script>
+<script src="gallery.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="budget.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="reminders.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="live-moments.js?v=20260730-shared-sync-hotfix-1" defer></script>
+<script src="day-closure.js?v=20260730-shared-sync-hotfix-1" defer></script>
 <script src="smart-photo-moments.js?v=20260723-1" defer></script>
 <script src="reisebuch.js?v=20260723-5" defer></script>
 <script src="ambient.js?v=20260724-9" defer></script>

@@ -577,9 +577,28 @@
     async ensure(client) {
       let profile = saved();
       if (profile?.tripId && profile?.memberName && !incoming) {
-        store(profile);
-        hide();
-        return profile;
+        try {
+          const result = await client.rpc('paris_list_my_trips');
+          if (result.error) throw result.error;
+          const row = (result.data || []).find(item => String(item.trip_id || item.tripId) === String(profile.tripId));
+          if (row) {
+            profile = { ...profile, ...normalizeTrip(row), cloud: undefined };
+            store(profile);
+            hide();
+            return profile;
+          }
+          // Eine alte lokale Reise-ID darf keine scheinbare Cloud-Verknüpfung erzeugen.
+          localStorage.removeItem(KEY);
+          localStorage.removeItem(LEGACY_TRIP_KEY);
+          profile = null;
+        } catch (error) {
+          console.warn('Cloud-Mitgliedschaft konnte nicht verifiziert werden:', error);
+          // Bei einem echten Netzwerkfehler nicht die lokale Auswahl zerstören;
+          // der Cloud-Start zeigt anschließend den konkreten Verbindungsfehler.
+          store(profile);
+          hide();
+          return profile;
+        }
       }
       // Bestehende Installationen werden automatisch als bereits eingerichtet markiert.
       const knownName = localStorage.getItem('parisDeviceOwner') || registry().find(x => x?.memberName)?.memberName;

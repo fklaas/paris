@@ -75,6 +75,26 @@
     identity = await window.ParisOnboarding.ensure(client);
     tripId = identity?.tripId || null;
     if (!tripId) throw new Error('Keine Reise ausgewählt.');
+
+    // Lokale Reiseauswahl niemals blind vertrauen. Der aktuell angemeldete
+    // Supabase-Nutzer muss diese Reise auch serverseitig als Mitglied sehen.
+    const membership = await client.rpc('paris_list_my_trips');
+    if (membership.error) throw membership.error;
+    const cloudTrips = Array.isArray(membership.data) ? membership.data : [];
+    const cloudTrip = cloudTrips.find(row => String(row.trip_id || row.tripId) === String(tripId));
+    if (!cloudTrip) {
+      throw new Error('Dieses Konto ist in der ausgewählten Reise nicht als Cloud-Mitglied eingetragen. Bitte Profil → Reisen öffnen und die gemeinsame Reise erneut auswählen oder per Einladungscode beitreten.');
+    }
+    identity = {
+      ...identity,
+      tripId: cloudTrip.trip_id || cloudTrip.tripId || tripId,
+      tripName: cloudTrip.trip_name || cloudTrip.tripName || identity.tripName,
+      memberName: cloudTrip.member_name || cloudTrip.memberName || identity.memberName,
+      role: cloudTrip.is_owner ? 'owner' : (cloudTrip.member_role || cloudTrip.role || identity.role || 'member'),
+      mode: 'shared'
+    };
+    tripId = identity.tripId;
+    try { localStorage.setItem('parisIdentityV1', JSON.stringify(identity)); } catch {}
     originalSetItem.call(localStorage, TRIP_LOCAL_KEY, tripId);
     if (identity.memberName) originalSetItem.call(localStorage, 'parisDeviceOwner', identity.memberName);
   }

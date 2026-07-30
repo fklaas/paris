@@ -46,6 +46,9 @@
     }
   };
 
+  const memoryStore = new Map();
+  let indexedDbAvailable = typeof indexedDB !== 'undefined';
+
   const state = {
     photos: [],
     urls: new Map(),
@@ -59,51 +62,96 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const els = {};
 
+  function disableIndexedDb(error) {
+    indexedDbAvailable = false;
+    console.warn('Galerie: IndexedDB nicht verfügbar, flüchtiger Speicher wird verwendet.', error?.message || error || '');
+  }
+
   function openDB() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = () => {
-        const db = request.result;
-        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+    if (!indexedDbAvailable) return Promise.resolve(null);
+    return new Promise(resolve => {
+      let settled = false;
+      const finish = value => { if (!settled) { settled = true; resolve(value); } };
+      try {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        const timeout = setTimeout(() => {
+          disableIndexedDb('Zeitüberschreitung beim Öffnen');
+          finish(null);
+        }, 3500);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
+        };
+        request.onsuccess = () => { clearTimeout(timeout); finish(request.result); };
+        request.onerror = () => { clearTimeout(timeout); disableIndexedDb(request.error); finish(null); };
+        request.onblocked = () => { clearTimeout(timeout); disableIndexedDb('Datenbankzugriff blockiert'); finish(null); };
+      } catch (error) {
+        disableIndexedDb(error);
+        finish(null);
+      }
     });
   }
 
   async function getAll() {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const request = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
-      request.onsuccess = () => resolve(request.result || []);
-      request.onerror = () => reject(request.error);
+    if (!db) return [...memoryStore.values()];
+    return new Promise(resolve => {
+      try {
+        const request = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => { disableIndexedDb(request.error); resolve([...memoryStore.values()]); };
+      } catch (error) {
+        disableIndexedDb(error);
+        resolve([...memoryStore.values()]);
+      }
     });
   }
 
   async function put(item) {
+    memoryStore.set(item.id, item);
     const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const request = db.transaction(STORE, 'readwrite').objectStore(STORE).put(item);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+    if (!db) return;
+    return new Promise(resolve => {
+      try {
+        const request = db.transaction(STORE, 'readwrite').objectStore(STORE).put(item);
+        request.onsuccess = () => resolve();
+        request.onerror = () => { disableIndexedDb(request.error); resolve(); };
+      } catch (error) {
+        disableIndexedDb(error);
+        resolve();
+      }
     });
   }
 
   async function del(id) {
+    memoryStore.delete(id);
     const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const request = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+    if (!db) return;
+    return new Promise(resolve => {
+      try {
+        const request = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => { disableIndexedDb(request.error); resolve(); };
+      } catch (error) {
+        disableIndexedDb(error);
+        resolve();
+      }
     });
   }
 
   async function clearAll() {
+    memoryStore.clear();
     const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const request = db.transaction(STORE, 'readwrite').objectStore(STORE).clear();
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+    if (!db) return;
+    return new Promise(resolve => {
+      try {
+        const request = db.transaction(STORE, 'readwrite').objectStore(STORE).clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => { disableIndexedDb(request.error); resolve(); };
+      } catch (error) {
+        disableIndexedDb(error);
+        resolve();
+      }
     });
   }
 
@@ -649,13 +697,19 @@
     $('#galleryExport').addEventListener('click', exportMetadata);
     try {
       state.photos = await getAll();
-      state.photos.forEach(photo => {
-        photo.group = tripGroup(photo.dateKey || dateKey(new Date(photo.takenAt)));
-        photo.favorite = Boolean(photo.favorite);
-        photo.polaroid = Boolean(photo.polaroid);
-        photo.caption = photo.caption || '';
-      });
-      if (window.ParisSync?.gallery) {
+    } catch (error) {
+      disableIndexedDb(error);
+      state.photos = [];
+    }
+    state.photos.forEach(photo => {
+      photo.group = tripGroup(photo.dateKey || dateKey(new Date(photo.takenAt)));
+      photo.favorite = Boolean(photo.favorite);
+      photo.polaroid = Boolean(photo.polaroid);
+      photo.caption = photo.caption || '';
+    });
+
+    if (window.ParisSync?.gallery) {
+      try {
         await window.ParisSync.ready;
         // Ab jetzt ist Supabase die einzige gemeinsame Quelle der Galerie.
         // Alte lokale Bilder werden NICHT bei jedem Start erneut hochgeladen.
@@ -711,13 +765,18 @@
           if (status === 'SUBSCRIBED') reconcileFromCloud();
         });
         startCloudGuard();
+      } catch (error) {
+        console.error('Galerie-Cloudstart:', error);
+        toast('Cloud-Synchronisierung momentan nicht erreichbar – Galerie bleibt nutzbar.');
       }
-      await normalizePolaroids();
-      render();
-    } catch (error) {
-      console.error(error);
-      els.empty.innerHTML = '<div class="gallery-empty-icon">⚠️</div><h3>Lokaler Speicher nicht verfügbar</h3><p>Bitte öffnet die Seite in Safari oder als installierte Web-App und erlaubt die lokale Datenspeicherung.</p>';
     }
+
+    try {
+      await normalizePolaroids();
+    } catch (error) {
+      console.warn('Galerie-Normalisierung:', error);
+    }
+    render();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });

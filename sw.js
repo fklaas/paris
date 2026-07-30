@@ -1,8 +1,9 @@
-const CACHE = 'reisezeit-paris-v13-supabase-bsbvvik-1';
+const CACHE = 'reisezeit-paris-v13-shared-sync-hotfix-1';
 const STATIC_ASSETS = [
   './manifest.webmanifest','./icon-192.png','./icon-512.png',
   './ambient.css','./ambient.js','./location-service.js','./auth/config.js','./auth/session.js','./auth/ui.js','./app-gateway.js','./onboarding.js','./supabase-sync.js','./people-system.js','./profile-center.js','./gallery.css','./reisebuch.css','./reisebuch.js',
-  './live-moments.css','./smart-photo-moments.css','./revue.css','./day-closure.css'
+  './live-moments.css','./smart-photo-moments.css','./revue.css','./day-closure.css',
+  './sync/core.js','./sync/gallery.js','./sync/budget.js','./sync/reminders.js','./sync/live-moments.js','./sync/day-closure.js','./gallery.js','./budget.js','./reminders.js','./live-moments.js','./day-closure.js'
 ];
 
 self.addEventListener('install', event => {
